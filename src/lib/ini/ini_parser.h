@@ -12,11 +12,11 @@
 #include "ini.h"
 
 static IniKV* ini_kv_init(void);
-static void ini_kv_del(IniKV* self);
+static void ini_kv_destroy(IniKV* self);
 static IniSection* ini_section_init(void);
-static void ini_section_del(IniSection* self);
+static void ini_section_destroy(IniSection* self);
 static Ini* ini_init(void);
-static void ini_del(Ini* self);
+static void ini_destroy(Ini* self);
 static void remove_inline_comment(char* str);
 static IniKV* find_key(IniSection* sec, const char* key);
 static IniSection* find_section(Ini* ini, const char* name);

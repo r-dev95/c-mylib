@@ -19,14 +19,14 @@ typedef enum {
 } log_level_t;
 
 bool logger_init(
-    const char* fpath, log_level_t level, size_t bufsize, bool async,
-    size_t nqueue
+    const char* fpath, const log_level_t level, const size_t bufsize,
+    const bool async, const size_t nqueue
 );
 void logger_close(void);
 bool logger_set_format(const char* fmt);
 void logger_log(
-    log_level_t level, const char* fpath, const char* func, int line,
-    const char* fmt, ...
+    const log_level_t level, const char* fpath, const char* func,
+    const int line, const char* fmt, ...
 );
 
 /**

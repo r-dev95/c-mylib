@@ -28,29 +28,31 @@ typedef struct log_item {
 } log_item_t;
 
 static log_item_t* log_item_init(void);
-static void log_item_del(log_item_t* item);
+static void log_item_destroy(log_item_t* item);
 static bool format_init(const char* fmt);
-static void format_del(void);
+static void format_destroy(void);
 static bool fp_init(const char* fpath);
-static void fp_del(void);
-static bool fp_setvbuf(size_t bufsize);
-static bool queue_init(size_t nqueue);
-static void queue_del(void);
+static void fp_destroy(void);
+static bool fp_setvbuf(const size_t bufsize);
+static bool queue_init(const size_t nqueue);
+static void queue_destroy(void);
 static bool mutex_lock(pthread_mutex_t* mutex);
 static bool mutex_unlock(pthread_mutex_t* mutex);
 static bool cond_signal(pthread_cond_t* cond);
 static bool cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex);
-static char* get_level_name(log_level_t level);
-static bool realloc_format_line(char** pout, size_t* cap, size_t needed_size);
+static char* get_level_name(const log_level_t level);
+static bool realloc_format_line(
+    char** pout, size_t* cap, const size_t needed_size
+);
 static char* format_line(const log_item_t* item);
 static void output_line(const log_item_t* item);
 static bool enqueue_item(log_item_t* item);
 static log_item_t* dequeue_item_none_mutex(void);
 static log_item_t* dequeue_item(void);
 static void* worker(void* arg);
-static void logger_set_level(log_level_t level);
-static bool logger_set_stream(const char* fpath, size_t bufsize);
-static bool logger_set_async(bool async, size_t nqueue);
+static void logger_set_level(const log_level_t level);
+static bool logger_set_stream(const char* fpath, const size_t bufsize);
+static bool logger_set_async(const bool async, const size_t nqueue);
 
 // デフォルトフォーマット
 static const char* DEFAULT_FORMAT = "[%T][%l][%F:%L][%f()] - %m";
