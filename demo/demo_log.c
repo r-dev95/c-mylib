@@ -8,9 +8,11 @@
 #include "logger/logger.h"
 
 int main(void) {
-  const char* path = "demo.log";
+  const char* fpath = "demo.log";
 
-  if (!logger_init(path, LOG_LEVEL_DEBUG, 16 * 1024, true, 4096)) {
+  if (!logger_init(
+          LOG_BOTH_OUT, fpath, LOG_LEVEL_DEBUG, 16 * 1024, true, 4096
+      )) {
     fprintf(stderr, "ログ出力処理の初期化に失敗しました。\n");
     return EXIT_FAILURE;
   }

@@ -50,6 +50,7 @@ static bool enqueue_item(log_item_t* item);
 static log_item_t* dequeue_item_none_mutex(void);
 static log_item_t* dequeue_item(void);
 static int worker(void* arg);
+static void logger_set_out(const log_out_t out);
 static void logger_set_level(const log_level_t level);
 static bool logger_set_stream(const char* fpath, const size_t bufsize);
 static bool logger_set_async(const bool async, const size_t nqueue);
@@ -63,6 +64,8 @@ static const int MAX_CONV_SPEC_SIZE = 256;
 // 作成するログ1行分の最小バッファサイズ
 static const size_t MIN_LOG_SIZE = 1024;
 
+// ログ出力フラグ
+static log_out_t g_out = LOG_BOTH_OUT;
 // ログ出力用のファイルポインタ
 static FILE* g_fp = NULL;
 // ログレベル

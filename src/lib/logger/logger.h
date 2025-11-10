@@ -10,17 +10,24 @@
 extern "C" {
 #endif
 
+// ログ出力フラグ
+typedef enum {
+  LOG_STD_OUT = 1,  // 標準出力
+  LOG_FILE_OUT,     // ファイル出力
+  LOG_BOTH_OUT,     // 両方
+} log_out_t;
+
 // ログレベル
 typedef enum {
-  LOG_LEVEL_DEBUG = 0,
-  LOG_LEVEL_INFO,
-  LOG_LEVEL_WARN,
-  LOG_LEVEL_ERROR,
+  LOG_LEVEL_DEBUG = 0,  // デバッグ
+  LOG_LEVEL_INFO,       // 情報
+  LOG_LEVEL_WARN,       // 警告
+  LOG_LEVEL_ERROR,      // エラー
 } log_level_t;
 
 bool logger_init(
-    const char* fpath, const log_level_t level, const size_t bufsize,
-    const bool async, const size_t nqueue
+    const log_out_t out, const char* fpath, const log_level_t level,
+    const size_t bufsize, const bool async, const size_t nqueue
 );
 void logger_close(void);
 bool logger_set_format(const char* fmt);

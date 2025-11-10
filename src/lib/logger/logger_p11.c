@@ -313,7 +313,13 @@ static void output_line(const log_item_t* item) {
     return;
   }
 
-  fputs(line, g_fp ? g_fp : stderr);
+  if ((g_out & LOG_STD_OUT) == LOG_STD_OUT) {
+    printf("%s", line);
+  }
+
+  if ((g_out & LOG_FILE_OUT) == LOG_FILE_OUT) {
+    fputs(line, g_fp ? g_fp : stderr);
+  }
   free(line);
 }
 
@@ -411,6 +417,12 @@ static int worker(void* arg) {
 }
 
 /**
+ * @brief ログ出力フラグを設定する。
+ * @param out ログ出力フラグ。
+ */
+static void logger_set_out(const log_out_t out) { g_out = out; }
+
+/**
  * @brief ログレベルを設定する。
  * @param level ログレベル。
  */
@@ -478,6 +490,7 @@ static bool logger_set_async(const bool async, const size_t nqueue) {
 
 /**
  * @brief ログ処理を初期化する。
+ * @param out ログ出力フラグ。
  * @param fpath ログファイルパス。（NULLの場合、stderr）
  * @param level ログレベル。
  * @param bufsize ログストリームのバッファサイズ。
@@ -486,9 +499,11 @@ static bool logger_set_async(const bool async, const size_t nqueue) {
  * @return 成功: true, 失敗: false。
  */
 bool logger_init(
-    const char* fpath, const log_level_t level, const size_t bufsize,
-    const bool async, const size_t nqueue
+    const log_out_t out, const char* fpath, const log_level_t level,
+    const size_t bufsize, const bool async, const size_t nqueue
 ) {
+  // ログ出力フラグを設定
+  logger_set_out(out);
   // ログレベルを設定
   logger_set_level(level);
   // ログフォーマットを設定
