@@ -20,7 +20,7 @@ BIN_DIR   := $(BUILD_DIR)/bin
 MAIN      ?= $(SRC_DIR)/main.c
 MAIN_OBJ  := $(MAIN:%.c=$(OBJ_DIR)/%.o)
 TARGET    := $(MAIN:%.c=$(BIN_DIR)/%)
-SRCS      := $(shell find $(SRC_DIR) -name "*.c")
+SRCS      := $(shell find $(SRC_DIR) -name "*.c" ! -name "_*.c")
 OBJS      := $(filter-out $(MAIN_OBJ), $(SRCS:%.c=$(OBJ_DIR)/%.o))
 
 CC        := gcc
