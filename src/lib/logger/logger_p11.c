@@ -87,7 +87,7 @@ static void fp_del(void) {
  * @param bufsize バッファサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool fp_setvbuf(size_t bufsize) {
+static bool fp_setvbuf(const size_t bufsize) {
   if (setvbuf(g_fp, NULL, _IOFBF, bufsize) != 0) return false;
 
   return true;
@@ -97,7 +97,7 @@ static bool fp_setvbuf(size_t bufsize) {
  * @brief 非同期モード用のキューのメモリを確保する。
  * @return 成功: true, 失敗: false。
  */
-static bool queue_init(size_t nqueue) {
+static bool queue_init(const size_t nqueue) {
   g_queue = (log_item_t**)calloc(nqueue, sizeof(log_item_t*));
   if (!g_queue) return false;
 
@@ -172,7 +172,7 @@ static bool cond_wait(cnd_t* cond, mtx_t* mutex) {
  * @param level ログレベル。
  * @return ログレベル名。
  */
-static char* get_level_name(log_level_t level) {
+static char* get_level_name(const log_level_t level) {
   switch (level) {
     case LOG_LEVEL_ERROR:
       return "ERROR";
@@ -197,7 +197,9 @@ static char* get_level_name(log_level_t level) {
  * @param needed_size 使用したいメモリサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool realloc_format_line(char** pout, size_t* cap, size_t needed_size) {
+static bool realloc_format_line(
+    char** pout, size_t* cap, const size_t needed_size
+) {
   if (needed_size > *cap) {
     *cap = (needed_size) * 2;
     char* new_out = (char*)realloc(*pout, *cap);
@@ -411,7 +413,7 @@ static int worker(void* arg) {
  * @brief ログレベルを設定する。
  * @param level ログレベル。
  */
-static void logger_set_level(log_level_t level) { g_level = level; }
+static void logger_set_level(const log_level_t level) { g_level = level; }
 
 /**
  * @brief ログストリームを設定する。
@@ -422,7 +424,7 @@ static void logger_set_level(log_level_t level) { g_level = level; }
  * @param bufsize ファイルパスのバッファサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool logger_set_stream(const char* fpath, size_t bufsize) {
+static bool logger_set_stream(const char* fpath, const size_t bufsize) {
   g_fp = stderr;
   if (!fpath) return true;
 
@@ -448,7 +450,7 @@ static bool logger_set_stream(const char* fpath, size_t bufsize) {
  * @param nqueue キューの数。
  * @return 成功: true, 失敗: false。
  */
-static bool logger_set_async(bool async, size_t nqueue) {
+static bool logger_set_async(const bool async, const size_t nqueue) {
   g_async = async;
   if (!g_async) return true;
 
@@ -483,8 +485,8 @@ static bool logger_set_async(bool async, size_t nqueue) {
  * @return 成功: true, 失敗: false。
  */
 bool logger_init(
-    const char* fpath, log_level_t level, size_t bufsize, bool async,
-    size_t nqueue
+    const char* fpath, const log_level_t level, const size_t bufsize,
+    const bool async, const size_t nqueue
 ) {
   // ログレベルを設定
   logger_set_level(level);
@@ -579,8 +581,8 @@ bool logger_set_format(const char* fmt) {
  * @param fmt 可変長メッセージ。
  */
 void logger_log(
-    log_level_t level, const char* fpath, const char* func, int line,
-    const char* fmt, ...
+    const log_level_t level, const char* fpath, const char* func,
+    const int line, const char* fmt, ...
 ) {
   if (!fmt) return;
   if (level < g_level) return;
