@@ -21,7 +21,7 @@ static IniKV* ini_kv_init(void) {
  * @brief キー・バリューデータのメモリを解放する。
  * @param self キー・バリューデータのポインタ。
  */
-static void ini_kv_del(IniKV* self) {
+static void ini_kv_destroy(IniKV* self) {
   if (!self) return;
 
   free(self->key);
@@ -45,13 +45,13 @@ static IniSection* ini_section_init(void) {
  * @brief セクションデータおよびキー・バリューデータのメモリを解放する。
  * @param self セクションデータのポインタ。
  */
-static void ini_section_del(IniSection* self) {
+static void ini_section_destroy(IniSection* self) {
   if (!self) return;
 
   for (IniKV* kv = self->kv; kv;) {
     IniKV* del_kv = kv;
     kv = kv->next;
-    ini_kv_del(del_kv);
+    ini_kv_destroy(del_kv);
   }
 
   free(self->name);
@@ -74,13 +74,13 @@ static Ini* ini_init(void) {
  * @brief Iniデータおよびセクションデータのメモリを解放する。
  * @param self Iniデータのポインタ。
  */
-static void ini_del(Ini* self) {
+static void ini_destroy(Ini* self) {
   if (!self) return;
 
   for (IniSection* sec = self->sections; sec;) {
     IniSection* del_sec = sec;
     sec = sec->next;
-    ini_section_del(del_sec);
+    ini_section_destroy(del_sec);
   }
 
   free(self);
@@ -316,7 +316,7 @@ Ini* ini_load(const char* fpath) {
   IniSection* cur_sec = make_section(ini, NULL);
   if (!cur_sec) {
     fprintf(stderr, "グローバルセクションが作成できません。\n");
-    ini_del(ini);
+    ini_destroy(ini);
     fclose(fp);
     return NULL;
   }
@@ -324,7 +324,7 @@ Ini* ini_load(const char* fpath) {
   // iniファイルを解析してデータを取得
   if (!ini_parse(fp, ini, cur_sec)) {
     fprintf(stderr, "iniファイルを解析できません。\n");
-    ini_del(ini);
+    ini_destroy(ini);
     fclose(fp);
     return NULL;
   }
@@ -340,7 +340,7 @@ Ini* ini_load(const char* fpath) {
 void ini_close(Ini* ini) {
   if (!ini) return;
 
-  ini_del(ini);
+  ini_destroy(ini);
 }
 
 /**

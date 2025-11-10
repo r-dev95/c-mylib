@@ -28,14 +28,14 @@ typedef struct log_item {
 } log_item_t;
 
 static log_item_t* log_item_init(void);
-static void log_item_del(log_item_t* item);
+static void log_item_destroy(log_item_t* item);
 static bool format_init(const char* fmt);
-static void format_del(void);
+static void format_destroy(void);
 static bool fp_init(const char* fpath);
-static void fp_del(void);
+static void fp_destroy(void);
 static bool fp_setvbuf(const size_t bufsize);
 static bool queue_init(const size_t nqueue);
-static void queue_del(void);
+static void queue_destroy(void);
 static bool mutex_lock(mtx_t* mutex);
 static bool mutex_unlock(mtx_t* mutex);
 static bool cond_signal(cnd_t* cond);
