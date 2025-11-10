@@ -23,7 +23,7 @@ static log_item_t* log_item_init(void) {
  * @brief ログデータのメモリを解放する。
  * @param self ログデータのポインタ。
  */
-static void log_item_del(log_item_t* self) {
+static void log_item_destroy(log_item_t* self) {
   if (!self) return;
 
   free(self->fname);
@@ -50,7 +50,7 @@ static bool format_init(const char* fmt) {
 /**
  * @brief ログフォーマットのメモリを解放する。
  */
-static void format_del(void) {
+static void format_destroy(void) {
   if (!g_format) return;
 
   free(g_format);
@@ -74,7 +74,7 @@ static bool fp_init(const char* fpath) {
 /**
  * @brief ログ出力用ファイルをフラッシュし、閉じる。
  */
-static void fp_del(void) {
+static void fp_destroy(void) {
   if (!g_fp || g_fp == stderr) return;
 
   fflush(g_fp);
@@ -87,7 +87,7 @@ static void fp_del(void) {
  * @param bufsize バッファサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool fp_setvbuf(size_t bufsize) {
+static bool fp_setvbuf(const size_t bufsize) {
   if (setvbuf(g_fp, NULL, _IOFBF, bufsize) != 0) return false;
 
   return true;
@@ -95,9 +95,10 @@ static bool fp_setvbuf(size_t bufsize) {
 
 /**
  * @brief 非同期モード用のキューのメモリを確保する。
+ * @param nqueue 非同期モード用のキューの数。
  * @return 成功: true, 失敗: false。
  */
-static bool queue_init(size_t nqueue) {
+static bool queue_init(const size_t nqueue) {
   g_queue = (log_item_t**)calloc(nqueue, sizeof(log_item_t*));
   if (!g_queue) return false;
 
@@ -107,7 +108,7 @@ static bool queue_init(size_t nqueue) {
 /**
  * @brief 非同期モード用のキューのメモリを解放する。
  */
-static void queue_del(void) {
+static void queue_destroy(void) {
   if (!g_queue) return;
 
   free(g_queue);
@@ -172,7 +173,7 @@ static bool cond_wait(cnd_t* cond, mtx_t* mutex) {
  * @param level ログレベル。
  * @return ログレベル名。
  */
-static char* get_level_name(log_level_t level) {
+static char* get_level_name(const log_level_t level) {
   switch (level) {
     case LOG_LEVEL_ERROR:
       return "ERROR";
@@ -197,7 +198,9 @@ static char* get_level_name(log_level_t level) {
  * @param needed_size 使用したいメモリサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool realloc_format_line(char** pout, size_t* cap, size_t needed_size) {
+static bool realloc_format_line(
+    char** pout, size_t* cap, const size_t needed_size
+) {
   if (needed_size > *cap) {
     *cap = (needed_size) * 2;
     char* new_out = (char*)realloc(*pout, *cap);
@@ -333,7 +336,7 @@ static bool enqueue_item(log_item_t* item) {
     ok = true;
   } else {
     // キューに空きがない場合、先頭（古い）データを削除して追加
-    log_item_del(g_queue[g_q_head]);
+    log_item_destroy(g_queue[g_q_head]);
     g_queue[g_q_head] = item;
     g_q_head = (g_q_head + 1) % g_nqueue;
     g_q_tail = (g_q_tail + 1) % g_nqueue;
@@ -400,7 +403,7 @@ static int worker(void* arg) {
     mutex_unlock(&g_mutex);
     if (item) {
       output_line(item);
-      log_item_del(item);
+      log_item_destroy(item);
     }
   }
 
@@ -411,7 +414,7 @@ static int worker(void* arg) {
  * @brief ログレベルを設定する。
  * @param level ログレベル。
  */
-static void logger_set_level(log_level_t level) { g_level = level; }
+static void logger_set_level(const log_level_t level) { g_level = level; }
 
 /**
  * @brief ログストリームを設定する。
@@ -422,7 +425,7 @@ static void logger_set_level(log_level_t level) { g_level = level; }
  * @param bufsize ファイルパスのバッファサイズ。
  * @return 成功: true, 失敗: false。
  */
-static bool logger_set_stream(const char* fpath, size_t bufsize) {
+static bool logger_set_stream(const char* fpath, const size_t bufsize) {
   g_fp = stderr;
   if (!fpath) return true;
 
@@ -445,10 +448,10 @@ static bool logger_set_stream(const char* fpath, size_t bufsize) {
 /**
  * @brief 非同期モードを設定する。
  * @param async 非同期モードフラグ。
- * @param nqueue キューの数。
+ * @param nqueue 非同期モード用のキューの数。
  * @return 成功: true, 失敗: false。
  */
-static bool logger_set_async(bool async, size_t nqueue) {
+static bool logger_set_async(const bool async, const size_t nqueue) {
   g_async = async;
   if (!g_async) return true;
 
@@ -475,7 +478,7 @@ static bool logger_set_async(bool async, size_t nqueue) {
 
 /**
  * @brief ログ処理を初期化する。
- * @param path ログファイルパス。（NULLの場合、stderr）
+ * @param fpath ログファイルパス。（NULLの場合、stderr）
  * @param level ログレベル。
  * @param bufsize ログストリームのバッファサイズ。
  * @param async 非同期モードフラグ。
@@ -483,8 +486,8 @@ static bool logger_set_async(bool async, size_t nqueue) {
  * @return 成功: true, 失敗: false。
  */
 bool logger_init(
-    const char* fpath, log_level_t level, size_t bufsize, bool async,
-    size_t nqueue
+    const char* fpath, const log_level_t level, const size_t bufsize,
+    const bool async, const size_t nqueue
 ) {
   // ログレベルを設定
   logger_set_level(level);
@@ -532,14 +535,14 @@ void logger_close(void) {
     log_item_t* item;
     while ((item = dequeue_item()) != NULL) {
       output_line(item);
-      log_item_del(item);
+      log_item_destroy(item);
     }
-    queue_del();
+    queue_destroy();
     mtx_destroy(&g_mutex);
     cnd_destroy(&g_cond);
   }
-  fp_del();
-  format_del();
+  fp_destroy();
+  format_destroy();
 }
 
 /**
@@ -579,8 +582,8 @@ bool logger_set_format(const char* fmt) {
  * @param fmt 可変長メッセージ。
  */
 void logger_log(
-    log_level_t level, const char* fpath, const char* func, int line,
-    const char* fmt, ...
+    const log_level_t level, const char* fpath, const char* func,
+    const int line, const char* fmt, ...
 ) {
   if (!fmt) return;
   if (level < g_level) return;
@@ -651,5 +654,5 @@ void logger_log(
   item->line = line;
   item->msg = msg;
 
-  if (!enqueue_item(item)) log_item_del(item);
+  if (!enqueue_item(item)) log_item_destroy(item);
 }
