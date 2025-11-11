@@ -82,7 +82,7 @@ static void fp_destroy(void) {
 }
 
 /**
- * @brief ログ出力用ファイルのメモリを確保する。
+ * @brief ログ出力用ファイルのバッファリング方式を設定する。
  * @param bufsize バッファサイズ。
  * @return 成功: true, 失敗: false。
  */
@@ -445,7 +445,7 @@ static bool logger_set_stream(const char* fpath, const size_t bufsize) {
 
   if (!fp_setvbuf(bufsize)) {
     fprintf(
-        stderr, "ログストリームのバッファサイズを確保できません。[%zu]\n",
+        stderr, "ログストリームのバッファリング方式を設定できません。[%zu]\n",
         bufsize
     );
     return false;
