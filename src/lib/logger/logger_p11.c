@@ -40,9 +40,9 @@ static void log_item_destroy(log_item_t* self) {
 static bool format_init(const char* fmt) {
   if (!fmt) return false;
 
-  if (g_format) free(g_format);
-  g_format = my_strdup(fmt);
-  if (!g_format) return false;
+  if (g_param.format) free(g_param.format);
+  g_param.format = my_strdup(fmt);
+  if (!g_param.format) return false;
 
   return true;
 }
@@ -51,10 +51,10 @@ static bool format_init(const char* fmt) {
  * @brief ログフォーマットのメモリを解放する。
  */
 static void format_destroy(void) {
-  if (!g_format) return;
+  if (!g_param.format) return;
 
-  free(g_format);
-  g_format = NULL;
+  free(g_param.format);
+  g_param.format = NULL;
 }
 
 /**
@@ -65,8 +65,8 @@ static void format_destroy(void) {
 static bool fp_init(const char* fpath) {
   if (!fpath) return false;
 
-  g_fp = fopen(fpath, "a");
-  if (!g_fp) return false;
+  g_param.fp = fopen(fpath, "a");
+  if (!g_param.fp) return false;
 
   return true;
 }
@@ -75,11 +75,11 @@ static bool fp_init(const char* fpath) {
  * @brief ログ出力用ファイルをフラッシュし、閉じる。
  */
 static void fp_destroy(void) {
-  if (!g_fp || g_fp == stderr) return;
+  if (!g_param.fp || g_param.fp == stderr) return;
 
-  fflush(g_fp);
-  fclose(g_fp);
-  g_fp = NULL;
+  fflush(g_param.fp);
+  fclose(g_param.fp);
+  g_param.fp = NULL;
 }
 
 /**
@@ -88,7 +88,7 @@ static void fp_destroy(void) {
  * @return 成功: true, 失敗: false。
  */
 static bool fp_setvbuf(const size_t bufsize) {
-  if (setvbuf(g_fp, NULL, _IOFBF, bufsize) != 0) return false;
+  if (setvbuf(g_param.fp, NULL, _IOFBF, bufsize) != 0) return false;
 
   return true;
 }
@@ -99,8 +99,8 @@ static bool fp_setvbuf(const size_t bufsize) {
  * @return 成功: true, 失敗: false。
  */
 static bool queue_init(const size_t nqueue) {
-  g_queue = (log_item_t**)calloc(nqueue, sizeof(log_item_t*));
-  if (!g_queue) return false;
+  g_param.queue = (log_item_t**)calloc(nqueue, sizeof(log_item_t*));
+  if (!g_param.queue) return false;
 
   return true;
 }
@@ -109,10 +109,10 @@ static bool queue_init(const size_t nqueue) {
  * @brief 非同期モード用のキューのメモリを解放する。
  */
 static void queue_destroy(void) {
-  if (!g_queue) return;
+  if (!g_param.queue) return;
 
-  free(g_queue);
-  g_queue = NULL;
+  free(g_param.queue);
+  g_param.queue = NULL;
 }
 
 /**
@@ -226,7 +226,7 @@ static char* format_line(const log_item_t* item) {
 
   out[0] = '\0';
   size_t len = 0;
-  const char* fmt = g_format ? g_format : DEFAULT_FORMAT;
+  const char* fmt = g_param.format ? g_param.format : DEFAULT_FORMAT;
   for (const char* ptr = fmt; *ptr; ++ptr) {
     if (*ptr == '%' && *(ptr + 1)) {
       char ch = *(ptr + 1);
@@ -313,14 +313,15 @@ static void output_line(const log_item_t* item) {
     return;
   }
 
-  if ((g_out & LOG_STD_OUT) == LOG_STD_OUT) {
+  if ((g_param.out & LOG_STD_OUT) == LOG_STD_OUT) {
     printf("%s", line);
   }
 
-  if ((g_out & LOG_FILE_OUT) == LOG_FILE_OUT) {
-    fputs(line, g_fp ? g_fp : stderr);
+  if ((g_param.out & LOG_FILE_OUT) == LOG_FILE_OUT) {
+    fputs(line, g_param.fp ? g_param.fp : stderr);
   }
   free(line);
+  fflush(g_param.fp);
 }
 
 /**
@@ -329,27 +330,27 @@ static void output_line(const log_item_t* item) {
  * @return 成功: true, 失敗: false。
  */
 static bool enqueue_item(log_item_t* item) {
-  if (!g_async || !item) return false;
+  if (!g_param.async || !item) return false;
 
-  mutex_lock(&g_mutex);
+  mutex_lock(&g_param.mutex);
 
   bool ok = false;
-  if (g_q_count < g_nqueue) {
+  if (g_param.q_count < g_param.nqueue) {
     // キューに空きがある場合、末尾に追加
-    g_queue[g_q_tail] = item;
-    g_q_tail = (g_q_tail + 1) % g_nqueue;
-    g_q_count++;
+    g_param.queue[g_param.q_tail] = item;
+    g_param.q_tail = (g_param.q_tail + 1) % g_param.nqueue;
+    g_param.q_count++;
     ok = true;
   } else {
     // キューに空きがない場合、先頭（古い）データを削除して追加
-    log_item_destroy(g_queue[g_q_head]);
-    g_queue[g_q_head] = item;
-    g_q_head = (g_q_head + 1) % g_nqueue;
-    g_q_tail = (g_q_tail + 1) % g_nqueue;
+    log_item_destroy(g_param.queue[g_param.q_head]);
+    g_param.queue[g_param.q_head] = item;
+    g_param.q_head = (g_param.q_head + 1) % g_param.nqueue;
+    g_param.q_tail = (g_param.q_tail + 1) % g_param.nqueue;
     ok = true;
   }
-  if (!cond_signal(&g_cond)) return false;
-  mutex_unlock(&g_mutex);
+  if (!cond_signal(&g_param.cond)) return false;
+  mutex_unlock(&g_param.mutex);
   return ok;
 }
 
@@ -359,10 +360,10 @@ static bool enqueue_item(log_item_t* item) {
  */
 static log_item_t* dequeue_item_none_mutex(void) {
   log_item_t* item = NULL;
-  if (g_q_count > 0) {
-    item = g_queue[g_q_head];
-    g_q_head = (g_q_head + 1) % g_nqueue;
-    g_q_count--;
+  if (g_param.q_count > 0) {
+    item = g_param.queue[g_param.q_head];
+    g_param.q_head = (g_param.q_head + 1) % g_param.nqueue;
+    g_param.q_count--;
   }
   return item;
 }
@@ -372,12 +373,12 @@ static log_item_t* dequeue_item_none_mutex(void) {
  * @return ログデータ。
  */
 static log_item_t* dequeue_item(void) {
-  if (!g_async) return NULL;
+  if (!g_param.async) return NULL;
 
-  if (!mutex_lock(&g_mutex)) return false;
+  if (!mutex_lock(&g_param.mutex)) return false;
 
   log_item_t* item = dequeue_item_none_mutex();
-  mutex_unlock(&g_mutex);
+  mutex_unlock(&g_param.mutex);
   return item;
 }
 
@@ -391,22 +392,22 @@ static int worker(void* arg) {
   (void)arg;
 
   while (true) {
-    mutex_lock(&g_mutex);
+    mutex_lock(&g_param.mutex);
 
     // キューへのログデータ追加待ち
-    while (g_q_count == 0 && g_worker_running) {
-      cond_wait(&g_cond, &g_mutex);
+    while (g_param.q_count == 0 && g_param.worker_running) {
+      cond_wait(&g_param.cond, &g_param.mutex);
     }
 
     // 無限ループを終了
-    if (!g_worker_running && g_q_count == 0) {
-      mutex_unlock(&g_mutex);
+    if (!g_param.worker_running && g_param.q_count == 0) {
+      mutex_unlock(&g_param.mutex);
       break;
     }
 
     // キューからログデータを取得してストリームに出力
     log_item_t* item = dequeue_item_none_mutex();
-    mutex_unlock(&g_mutex);
+    mutex_unlock(&g_param.mutex);
     if (item) {
       output_line(item);
       log_item_destroy(item);
@@ -420,13 +421,13 @@ static int worker(void* arg) {
  * @brief ログ出力フラグを設定する。
  * @param out ログ出力フラグ。
  */
-static void logger_set_out(const log_out_t out) { g_out = out; }
+static void logger_set_out(const log_out_t out) { g_param.out = out; }
 
 /**
  * @brief ログレベルを設定する。
  * @param level ログレベル。
  */
-static void logger_set_level(const log_level_t level) { g_level = level; }
+static void logger_set_level(const log_level_t level) { g_param.level = level; }
 
 /**
  * @brief ログストリームを設定する。
@@ -438,7 +439,7 @@ static void logger_set_level(const log_level_t level) { g_level = level; }
  * @return 成功: true, 失敗: false。
  */
 static bool logger_set_stream(const char* fpath, const size_t bufsize) {
-  g_fp = stderr;
+  g_param.fp = stderr;
   if (!fpath) return true;
 
   if (!fp_init(fpath)) {
@@ -464,19 +465,19 @@ static bool logger_set_stream(const char* fpath, const size_t bufsize) {
  * @return 成功: true, 失敗: false。
  */
 static bool logger_set_async(const bool async, const size_t nqueue) {
-  g_async = async;
-  if (!g_async) return true;
+  g_param.async = async;
+  if (!g_param.async) return true;
 
   if (!queue_init(nqueue)) {
     fprintf(stderr, "非同期モード用キューのメモリを確保できません。\n");
     return false;
   }
 
-  g_worker_running = true;
-  mtx_init(&g_mutex, mtx_plain);
-  cnd_init(&g_cond);
-  if (thrd_create(&g_worker, worker, NULL) != thrd_success) {
-    g_worker_running = false;
+  g_param.worker_running = true;
+  mtx_init(&g_param.mutex, mtx_plain);
+  cnd_init(&g_param.cond);
+  if (thrd_create(&g_param.worker, worker, NULL) != thrd_success) {
+    g_param.worker_running = false;
     fprintf(stderr, "非同期モード用スレッドが作成できません。\n");
     return false;
   }
@@ -537,14 +538,14 @@ bool logger_init(
  * @brief ログ処理を終了する。
  */
 void logger_close(void) {
-  if (g_async) {
+  if (g_param.async) {
     // スレッドを停止
-    mutex_lock(&g_mutex);
+    mutex_lock(&g_param.mutex);
 
-    g_worker_running = false;
-    cond_signal(&g_cond);
-    mutex_unlock(&g_mutex);
-    thrd_join(g_worker, NULL);
+    g_param.worker_running = false;
+    cond_signal(&g_param.cond);
+    mutex_unlock(&g_param.mutex);
+    thrd_join(g_param.worker, NULL);
 
     // キューに残っているログを出力
     log_item_t* item;
@@ -553,8 +554,8 @@ void logger_close(void) {
       log_item_destroy(item);
     }
     queue_destroy();
-    mtx_destroy(&g_mutex);
-    cnd_destroy(&g_cond);
+    mtx_destroy(&g_param.mutex);
+    cnd_destroy(&g_param.cond);
   }
   fp_destroy();
   format_destroy();
@@ -601,7 +602,7 @@ void logger_log(
     const int line, const char* fmt, ...
 ) {
   if (!fmt) return;
-  if (level < g_level) return;
+  if (level < g_param.level) return;
 
   // 可変長メッセージをフォーマット
   va_list ap, ap2;
@@ -642,7 +643,7 @@ void logger_log(
   char* fname = get_fname(fpath);
 
   // 同期モード（直接フォーマットして書き出し）
-  if (!g_async) {
+  if (!g_param.async) {
     log_item_t item = {
         .level = level,
         .fname = fname,
