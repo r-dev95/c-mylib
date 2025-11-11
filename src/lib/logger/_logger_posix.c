@@ -317,7 +317,9 @@ static void output_line(const log_item_t* item) {
   }
 
   if ((g_param.out & LOG_FILE_OUT) == LOG_FILE_OUT) {
-    fputs(line, g_param.fp ? g_param.fp : stderr);
+    if (g_param.fp) {
+      fputs(line, g_param.fp);
+    }
   }
   free(line);
 }
@@ -429,16 +431,12 @@ static void logger_set_level(const log_level_t level) { g_param.level = level; }
 
 /**
  * @brief ログストリームを設定する。
- *
- * - ファイルパスが指定されている場合、ファイルストリームを設定する。
- * - ファイルパスが指定されていない場合、"stderr"を設定する。
  * @param fpath ファイルパス。
  * @param bufsize ファイルパスのバッファサイズ。
  * @return 成功: true, 失敗: false。
  */
 static bool logger_set_stream(const char* fpath, const size_t bufsize) {
-  g_param.fp = stderr;
-  if (!fpath) return true;
+  if (!fpath) return false;
 
   if (!fp_init(fpath)) {
     fprintf(stderr, "ログファイルを開けません。[%s]\n", fpath);
