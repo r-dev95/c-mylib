@@ -75,7 +75,7 @@ static bool fp_init(const char* fpath) {
  * @brief ログ出力用ファイルをフラッシュし、閉じる。
  */
 static void fp_destroy(void) {
-  if (!g_param.fp || g_param.fp == stderr) return;
+  if (!g_param.fp) return;
 
   fflush(g_param.fp);
   fclose(g_param.fp);
