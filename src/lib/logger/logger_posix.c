@@ -495,8 +495,6 @@ static bool logger_set_async(const bool async) {
  * @param fmt ログフォーマット。
  * @param async 非同期モードフラグ。
  * @param fpath ログファイルパス。（NULLの場合、stderr）
- * @param max_fsize 最大ファイルバイトサイズ。
- * @param max_fno 最大アーカイブファイル数。
  * @return 成功: true, 失敗: false。
  */
 bool logger_init(
