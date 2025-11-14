@@ -30,6 +30,23 @@ char* get_fname(const char* fpath) {
 }
 
 /**
+ * @brief 3つの文字列を結合する。
+ * @param out 結合した文字列を出力するポインタ。
+ * @param lstr 左側の文字列。
+ * @param cstr 真中の文字列。
+ * @param rstr 右側の文字列。
+ * @return 成功: true, 失敗: false。
+ */
+bool joinstr(char* out, const char* lstr, const char* cstr, const char* rstr) {
+  if (!out || !lstr || !cstr || !rstr) { return false; }
+  strcpy(out, lstr);
+  strcat(out, cstr);
+  strcat(out, rstr);
+  if (!out) { return false; }
+  return true;
+}
+
+/**
  * @brief 文字列を新たなメモリに格納してポインタを返す。（自作strdup）
  * @param str 文字列。
  * @return 文字列を格納したポインタ。
@@ -37,16 +54,12 @@ char* get_fname(const char* fpath) {
 char* my_strdup(const char* str) {
   size_t len = strlen(str) + 1;
   char* copy = malloc(len);
-  if (copy) {
-    memcpy(copy, str, len);
-  }
+  if (copy) { memcpy(copy, str, len); }
   return copy;
 }
 
 size_t my_getline(char** pline, size_t* size, FILE* stream) {
-  if (pline == NULL || size == NULL || stream == NULL) {
-    return 0;
-  }
+  if (pline == NULL || size == NULL || stream == NULL) { return 0; }
 
   int c;
   size_t pos = 0;
@@ -55,7 +68,7 @@ size_t my_getline(char** pline, size_t* size, FILE* stream) {
   if (*pline == NULL || *size == 0) {
     *size = 128;
     *pline = malloc(*size);
-    if (*pline == NULL) return 0;
+    if (*pline == NULL) { return 0; }
   }
 
   while ((c = fgetc(stream)) != EOF) {
@@ -63,7 +76,7 @@ size_t my_getline(char** pline, size_t* size, FILE* stream) {
     if (pos + 1 >= *size) {
       size_t new_size = *size * 2;
       char* new_ptr = realloc(*pline, new_size);
-      if (new_ptr == NULL) return 0;
+      if (new_ptr == NULL) { return 0; }
 
       *pline = new_ptr;
       *size = new_size;
@@ -75,9 +88,7 @@ size_t my_getline(char** pline, size_t* size, FILE* stream) {
   }
 
   // EOFかつ何も読んでいない場合
-  if (pos == 0 && c == EOF) {
-    return 0;
-  }
+  if (pos == 0 && c == EOF) { return 0; }
 
   (*pline)[pos] = '\0';
   return pos;
@@ -89,7 +100,7 @@ size_t my_getline(char** pline, size_t* size, FILE* stream) {
  * @param len 文字列の長さ。
  */
 void remove_newline(char* str, size_t len) {
-  if (!str) return;
+  if (!str) { return; }
 
   while (len > 0 && (str[len - 1] == '\n' || str[len - 1] == '\r')) {
     str[--len] = '\0';
@@ -101,7 +112,7 @@ void remove_newline(char* str, size_t len) {
  * @param str 文字列。
  */
 void remove_spaces(char* str) {
-  if (!str) return;
+  if (!str) { return; }
 
   // 左側
   char* ptr = str;
@@ -110,9 +121,7 @@ void remove_spaces(char* str) {
 
   // 右側
   size_t len = strlen(str);
-  while (len > 0 && isspace((unsigned char)str[len - 1])) {
-    str[--len] = '\0';
-  }
+  while (len > 0 && isspace((unsigned char)str[len - 1])) { str[--len] = '\0'; }
 }
 
 /**
@@ -120,7 +129,7 @@ void remove_spaces(char* str) {
  * @param str 文字列。
  */
 void remove_quotes(char* str) {
-  if (!str) return;
+  if (!str) { return; }
 
   size_t len = strlen(str);
   if (len >= 2 && ((str[0] == '"' && str[len - 1] == '"') ||

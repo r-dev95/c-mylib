@@ -6,4 +6,4 @@
 # log result
 [lL]og/
 [lL]ogs/
-*.log
+*.log*
