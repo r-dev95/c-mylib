@@ -1,3 +1,4 @@
 BasedOnStyle: Google
 
 AlignAfterOpenBracket: BlockIndent
+AllowShortBlocksOnASingleLine: Always
