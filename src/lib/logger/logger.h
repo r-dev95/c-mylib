@@ -26,11 +26,10 @@ typedef enum {
 } log_level_t;
 
 bool logger_init(
-    const log_out_t out, const char* fpath, const log_level_t level,
-    const size_t bufsize, const bool async, const size_t nqueue
+    const log_out_t out, const log_level_t level, const char* fmt,
+    const bool async, const char* fpath
 );
 void logger_close(void);
-bool logger_set_format(const char* fmt);
 void logger_log(
     const log_level_t level, const char* fpath, const char* func,
     const int line, const char* fmt, ...

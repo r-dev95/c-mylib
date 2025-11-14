@@ -1,7 +1,7 @@
 /**
  * ログ処理用ヘッダ。
  *
- * - Posix (Linux/Mac OS)標準: pthread
+ * - Posix (Linux/Mac OS)標準: pthread.h
  */
 
 #pragma once
@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 // ログデータ
-typedef struct log_item {
+typedef struct {
   log_level_t level;
   char* fname;
   char* func;
@@ -30,9 +30,9 @@ typedef struct log_item {
 // パラメータ
 typedef struct {
   log_out_t out;          // ログ出力フラグ
-  FILE* fp;               // ログ出力用のファイルポインタ
   log_level_t level;      // ログレベル
   char* format;           // ログフォーマットのポインタ
+  FILE* fp;               // ログ出力用のファイルポインタ
   bool async;             // 非同期モードフラグ
   pthread_mutex_t mutex;  // 非同期モード: 排他制御用mutex
   pthread_cond_t cond;    // 非同期モード: 排他制御用cond
@@ -47,6 +47,10 @@ typedef struct {
 
 // デフォルトフォーマット
 static const char* DEFAULT_FORMAT = "[%T][%l][%F:%L][%f()] - %m";
+// ログストリームのバッファリングサイズ
+static const size_t STREAM_BUF_SIZE = 16 * 1024;
+// キューの最大数
+static const size_t MAX_QUEUE_NO = 4 * 1024;
 // 可変長引数の小さいバッファサイズ
 static const size_t SMALL_VAR_SIZE = 256;
 // ログの変換指定子1つ分の最大バッファサイズ
@@ -57,9 +61,9 @@ static const size_t MIN_LOG_SIZE = 1024;
 // パラメータの初期化
 static log_param_t g_param = {
     .out = LOG_BOTH_OUT,
-    .fp = NULL,
     .level = LOG_LEVEL_INFO,
     .format = NULL,
+    .fp = NULL,
     .async = true,
     .mutex = {{0}},
     .cond = {{{0}}},
@@ -92,13 +96,13 @@ static bool realloc_format_line(
 static char* format_line(const log_item_t* item);
 static void output_line(const log_item_t* item);
 static bool enqueue_item(log_item_t* item);
-static log_item_t* dequeue_item_none_mutex(void);
 static log_item_t* dequeue_item(void);
 static void* worker(void* arg);
 static void logger_set_out(const log_out_t out);
 static void logger_set_level(const log_level_t level);
-static bool logger_set_stream(const char* fpath, const size_t bufsize);
-static bool logger_set_async(const bool async, const size_t nqueue);
+static bool logger_set_format(const char* fmt);
+static bool logger_set_stream(const char* fpath);
+static bool logger_set_async(const bool async);
 
 #ifdef __cplusplus
 }
