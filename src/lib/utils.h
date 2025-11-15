@@ -5,6 +5,7 @@
 #pragma once
 
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 extern "C" {
 #endif
 
+void errout(const char* fmt, ...);
 struct tm get_current_time();
 char* get_fname(const char* fpath);
 bool joinstr(char* out, const char* lstr, const char* cstr, const char* rstr);

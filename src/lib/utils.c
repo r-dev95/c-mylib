@@ -5,6 +5,51 @@
 #include "utils.h"
 
 /**
+ * @brief 可変長引数を標準エラー出力する。
+ *
+ * - エラーハンドリング時のエラーメッセージ出力用。
+ * - エラー出力をしない場合、_ERROUT_OFF_を定義する。
+ * @param fmt フォーマット。
+ * @param ... 可変長引数。
+ */
+void errout(const char* fmt, ...) {
+#ifndef _ERROUT_OFF_
+  int len;
+  va_list ap, ap2;
+  char* msg = NULL;
+  char tmp_buff[128];
+
+  // 可変長引数のフォーマット
+  va_start(ap, fmt);
+  va_copy(ap2, ap);
+
+  len = vsnprintf(tmp_buff, sizeof(tmp_buff), fmt, ap2);
+  va_end(ap2);
+
+  if (len < 0) {
+    msg = my_strdup("<format-error>");
+  } else if ((size_t)len < sizeof(tmp_buff)) {
+    msg = my_strdup(tmp_buff);
+  } else {
+    size_t size = (size_t)len + 1;
+    msg = (char*)malloc(size);
+    if (!msg) {
+      va_end(ap);
+      return;
+    }
+    if (vsnprintf(msg, size, fmt, ap) < 0) {
+      free(msg);
+      va_end(ap);
+      return;
+    }
+  }
+  va_end(ap);
+
+  fprintf(stderr, "❌ %s", msg);
+#endif  // _ERROUT_OFF_
+}
+
+/**
  * @brief 現在時刻を取得する。
  * @return tm (ISO C `broken-down time' structure.)
  */
@@ -31,18 +76,25 @@ char* get_fname(const char* fpath) {
 
 /**
  * @brief 3つの文字列を結合する。
- * @param out 結合した文字列を出力するポインタ。
+ * @param out 結合した文字列の出力先。
  * @param lstr 左側の文字列。
  * @param cstr 真中の文字列。
  * @param rstr 右側の文字列。
  * @return 成功: true, 失敗: false。
  */
 bool joinstr(char* out, const char* lstr, const char* cstr, const char* rstr) {
-  if (!out || !lstr || !cstr || !rstr) { return false; }
+  if (!out || !lstr || !cstr || !rstr) {
+    errout(
+        "結合した文字列の出力先または左側、真中、右側の文字列が設定されていませ"
+        "ん。\n"
+    );
+    return false;
+  }
+
   strcpy(out, lstr);
   strcat(out, cstr);
   strcat(out, rstr);
-  if (!out) { return false; }
+
   return true;
 }
 
@@ -52,9 +104,17 @@ bool joinstr(char* out, const char* lstr, const char* cstr, const char* rstr) {
  * @return 文字列を格納したポインタ。
  */
 char* my_strdup(const char* str) {
+  if (!str) {
+    errout("文字列が設定されていません。\n");
+    return NULL;
+  }
   size_t len = strlen(str) + 1;
   char* copy = malloc(len);
-  if (copy) { memcpy(copy, str, len); }
+  if (!copy) {
+    errout("文字列のメモリを確保できません。\n");
+    return NULL;
+  }
+  memcpy(copy, str, len);
   return copy;
 }
 
