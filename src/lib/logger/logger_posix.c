@@ -47,7 +47,7 @@ static void log_item_destroy(log_item_t** self) {
 static char* format_init(const char* fmt) {
   if (!fmt) {
     errout("ログフォーマットが設定されていません。\n");
-    return false;
+    return NULL;
   }
 
   char* self = my_strdup(fmt);
