@@ -51,8 +51,6 @@ static const char* DEFAULT_FORMAT = "[%T][%l][%F:%L][%f()] - %m";
 static const size_t STREAM_BUF_SIZE = 16 * 1024;
 // キューの最大数
 static const size_t MAX_QUEUE_NO = 4 * 1024;
-// 可変長引数の小さいバッファサイズ
-static const size_t SMALL_VAR_SIZE = 256;
 // ログの変換指定子1つ分の最大バッファサイズ
 static const size_t MAX_CONV_SPEC_SIZE = 256;
 // 作成するログ1行分の最小バッファサイズ
@@ -77,14 +75,14 @@ static log_param_t g_param = {
 };
 
 static log_item_t* log_item_init(void);
-static void log_item_destroy(log_item_t* item);
-static bool format_init(const char* fmt);
-static void format_destroy(void);
-static bool fp_init(const char* fpath);
-static void fp_destroy(void);
-static bool fp_setvbuf(const size_t bufsize);
-static bool queue_init(const size_t nqueue);
-static void queue_destroy(void);
+static bool log_item_destroy(log_item_t** item);
+static char* format_init(const char* fmt);
+static bool format_destroy(char** self);
+static FILE* fp_init(const char* fpath);
+static bool fp_destroy(FILE** self);
+static bool fp_setvbuf(FILE* self, const size_t bufsize);
+static log_item_t** queue_init(const size_t nqueue);
+static bool queue_destroy(log_item_t*** self);
 static bool mutex_lock(pthread_mutex_t* mutex);
 static bool mutex_unlock(pthread_mutex_t* mutex);
 static bool cond_signal(pthread_cond_t* cond);
@@ -94,7 +92,7 @@ static bool realloc_format_line(
     char** pout, size_t* cap, const size_t needed_size
 );
 static char* format_line(const log_item_t* item);
-static void output_line(const log_item_t* item);
+static bool output_line(const log_item_t* item);
 static bool enqueue_item(log_item_t* item);
 static log_item_t* dequeue_item(void);
 static void* worker(void* arg);

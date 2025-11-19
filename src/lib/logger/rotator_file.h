@@ -18,7 +18,7 @@
 // ファイルパスのバイトサイズ
 #define FPATH_SIZE 256
 // 初回読み込みファイル数
-#define INI_FILE_NUM 20
+#define INI_FILE_NUM 10
 
 // ファイル情報データ
 typedef struct {
@@ -52,19 +52,19 @@ static rot_param_t g_param = {
     .base_fpath = {0},
 };
 
-static bool fp_init(const char* fpath);
-static void fp_destroy(void);
+static FILE* fp_init(const char* fpath);
+static bool fp_destroy(FILE** self);
 static file_info_t* finfo_init(void);
-static void finfo_destroy(file_info_t* self);
+static bool finfo_destroy(file_info_t** self);
 static bool finfo_update(file_info_t** self, file_info_t* info);
-static file_list_t* flist_init(size_t file_num);
-static void flist_destroy(file_list_t* self);
+static file_list_t* flist_init(size_t max_fno);
+static bool flist_destroy(file_list_t** self);
 static int flist_add_finfo(file_list_t* self, file_info_t* info);
 static bool flist_del_last_finfo(file_list_t* self);
-static bool flist_realloc_finfo(file_list_t** pself);
+static bool flist_realloc_finfo(file_list_t** self);
 static int compare_mtime_desc(const void* a, const void* b);
-static void sort_file_list_desc(file_list_t* flist);
-static void make_fpath(char* new_fpath, const char* fpath);
+static bool sort_file_list_desc(file_list_t* flist);
+static bool make_fpath(char* new_fpath, const char* fpath);
 static file_info_t* get_file_info(const char* fpath);
 static bool get_all_file_info(
     file_list_t* flist, const char* dpath, const char* search

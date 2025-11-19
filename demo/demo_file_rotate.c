@@ -4,7 +4,7 @@
 
 #include "logger/rotator.h"
 
-int main() {
+int main(void) {
   int len = 0;
   int count = 0;
   int fin_flag = 0;
@@ -20,13 +20,13 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  while (true) {
+  while (fin_flag < 10) {
     count += 1;
     len = 0;
     for (size_t i = 0; i < loop_num; i++) {
       len += snprintf(line, 128 * sizeof(line), "[%5d]\n", count);
     }
-    sleep(5);
+    sleep(1);
     fin_flag += 1;
 
     if (!rotator_rotate((size_t)len)) {
