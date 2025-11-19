@@ -26,6 +26,7 @@ OBJS      := $(filter-out $(MAIN_OBJ), $(SRCS:%.c=$(OBJ_DIR)/%.o))
 CC        := gcc
 CFLAGS    := -std=c11 -Wall -Wextra -Wpedantic \
             -Wconversion -Wshadow -Wcast-align -Wpointer-arith \
+			-Wformat -Wmissing-prototypes -Wstrict-prototypes -Werror \
 			-g
 IFLAGS    := -Isrc/lib
 LDFLAGS   :=
