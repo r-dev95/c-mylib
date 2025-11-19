@@ -25,6 +25,7 @@ typedef struct Ini {
 
 Ini* ini_load(const char* fpath);
 void ini_close(Ini* ini);
+void ini_dump(Ini* ini);
 const char* ini_get(
     Ini* ini, const char* section, const char* key, const char* default_value
 );

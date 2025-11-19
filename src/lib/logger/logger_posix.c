@@ -15,7 +15,7 @@
 static log_item_t* log_item_init(void) {
   log_item_t* self = (log_item_t*)calloc(1, sizeof(*self));
   if (!self) {
-    errout("ログデータのメモリを確保できません。\n");
+    SET_ERR_MSG("ログデータのメモリを確保できません。\n");
     return NULL;
   }
 
@@ -25,18 +25,21 @@ static log_item_t* log_item_init(void) {
 /**
  * @brief ログデータのメモリを解放する。
  * @param self ログデータ。
+ * @return 成功: true, 失敗: false。
  */
-static void log_item_destroy(log_item_t** self) {
+static bool log_item_destroy(log_item_t** self) {
   if (!self || !*self) {
-    errout("ログデータが設定されていません。\n");
-    return;
+    SET_ERR_MSG("ログデータが設定されていません。\n");
+    return false;
   }
 
-  free((*self)->fname);
-  free((*self)->func);
-  free((*self)->msg);
+  if ((*self)->fname) { free((*self)->fname); }
+  if ((*self)->func) { free((*self)->func); }
+  if ((*self)->msg) { free((*self)->msg); }
   free(*self);
   *self = NULL;
+
+  return true;
 }
 
 /**
@@ -46,7 +49,7 @@ static void log_item_destroy(log_item_t** self) {
  */
 static char* format_init(const char* fmt) {
   if (!fmt) {
-    errout("ログフォーマットが設定されていません。\n");
+    SET_ERR_MSG("ログフォーマットが設定されていません。\n");
     return NULL;
   }
 
@@ -59,15 +62,18 @@ static char* format_init(const char* fmt) {
 /**
  * @brief ログフォーマットのメモリを解放する。
  * @param self ログフォーマット。
+ * @return 成功: true, 失敗: false。
  */
-static void format_destroy(char** self) {
+static bool format_destroy(char** self) {
   if (!self || !*self) {
-    errout("ログフォーマットが設定されていません。\n");
-    return;
+    SET_ERR_MSG("ログフォーマットが設定されていません。\n");
+    return false;
   }
 
   free(*self);
   *self = NULL;
+
+  return true;
 }
 
 /**
@@ -77,13 +83,13 @@ static void format_destroy(char** self) {
  */
 static FILE* fp_init(const char* fpath) {
   if (!fpath) {
-    errout("ファイルパスが設定されていません。\n");
+    SET_ERR_MSG("ファイルパスが設定されていません。\n");
     return NULL;
   }
 
   FILE* self = fopen(fpath, "a");
   if (!self) {
-    errout("ファイルがオープンできません。\n");
+    SET_ERR_MSG("ファイルがオープンできません。[%s]\n", fpath);
     return NULL;
   }
 
@@ -93,16 +99,19 @@ static FILE* fp_init(const char* fpath) {
 /**
  * @brief ファイルをフラッシュして閉じる。
  * @param self ファイルストリーム。
+ * @return 成功: true, 失敗: false。
  */
-static void fp_destroy(FILE** self) {
+static bool fp_destroy(FILE** self) {
   if (!self || !*self) {
-    errout("ファイルストリームが設定されていません。\n");
-    return;
+    SET_ERR_MSG("ファイルストリームが設定されていません。\n");
+    return false;
   }
 
   fflush(*self);
   fclose(*self);
   *self = NULL;
+
+  return true;
 }
 
 /**
@@ -113,12 +122,14 @@ static void fp_destroy(FILE** self) {
  */
 static bool fp_setvbuf(FILE* self, const size_t bufsize) {
   if (!self) {
-    errout("ファイルストリームが設定されていません。\n");
+    SET_ERR_MSG("ファイルストリームが設定されていません。\n");
     return false;
   }
 
   if (setvbuf(self, NULL, _IOFBF, bufsize) != 0) {
-    errout("ファイルのバッファリング方式が設定できません。[%zu]\n", bufsize);
+    SET_ERR_MSG(
+        "ファイルのバッファリング方式が設定できません。[%zu]\n", bufsize
+    );
     return false;
   }
 
@@ -132,13 +143,13 @@ static bool fp_setvbuf(FILE* self, const size_t bufsize) {
  */
 static log_item_t** queue_init(const size_t nqueue) {
   if (nqueue < 1) {
-    errout("キューの数は[1]以上で設定してください。[%zu]\n", nqueue);
+    SET_ERR_MSG("キューの数は[1]以上で設定してください。[%zu]\n", nqueue);
     return NULL;
   }
 
-  log_item_t** self = (log_item_t**)calloc(nqueue, sizeof(log_item_t*));
+  log_item_t** self = calloc(nqueue, sizeof(*self));
   if (!self) {
-    errout("キューのメモリを確保できません。\n");
+    SET_ERR_MSG("キューのメモリを確保できません。\n");
     return NULL;
   }
 
@@ -148,15 +159,18 @@ static log_item_t** queue_init(const size_t nqueue) {
 /**
  * @brief 非同期モード用のキューのメモリを解放する。
  * @param self キュー。
+ * @return 成功: true, 失敗: false。
  */
-static void queue_destroy(log_item_t*** self) {
+static bool queue_destroy(log_item_t*** self) {
   if (!self || !*self) {
-    errout("キューが設定されていません。\n");
-    return;
+    SET_ERR_MSG("キューが設定されていません。\n");
+    return false;
   }
 
   free(*self);
   *self = NULL;
+
+  return true;
 }
 
 /**
@@ -166,12 +180,12 @@ static void queue_destroy(log_item_t*** self) {
  */
 static bool mutex_lock(pthread_mutex_t* mutex) {
   if (!mutex) {
-    errout("mutexが設定されていません。\n");
+    SET_ERR_MSG("mutexが設定されていません。\n");
     return false;
   }
 
   if (pthread_mutex_lock(mutex) != 0) {
-    errout("mutexロックできません。\n");
+    SET_ERR_MSG("mutexロックできません。\n");
     return false;
   }
 
@@ -185,12 +199,12 @@ static bool mutex_lock(pthread_mutex_t* mutex) {
  */
 static bool mutex_unlock(pthread_mutex_t* mutex) {
   if (!mutex) {
-    errout("mutexが設定されていません。\n");
+    SET_ERR_MSG("mutexが設定されていません。\n");
     return false;
   }
 
   if (pthread_mutex_unlock(mutex) != 0) {
-    errout("mutexをアンロックできません。\n");
+    SET_ERR_MSG("mutexアンロックできません。\n");
     return false;
   }
 
@@ -204,12 +218,12 @@ static bool mutex_unlock(pthread_mutex_t* mutex) {
  */
 static bool cond_signal(pthread_cond_t* cond) {
   if (!cond) {
-    errout("condが設定されていません。\n");
+    SET_ERR_MSG("condが設定されていません。\n");
     return false;
   }
 
   if (pthread_cond_signal(cond) != 0) {
-    errout("condシグナルを送信できません。\n");
+    SET_ERR_MSG("condシグナルを送信できません。\n");
     return false;
   }
 
@@ -224,12 +238,12 @@ static bool cond_signal(pthread_cond_t* cond) {
  */
 static bool cond_wait(pthread_cond_t* cond, pthread_mutex_t* mutex) {
   if (!cond || !mutex) {
-    errout("condまたはmutexが設定されていません。\n");
+    SET_ERR_MSG("condまたはmutexが設定されていません。\n");
     return false;
   }
 
   if (pthread_cond_wait(cond, mutex) != 0) {
-    errout("condシグナルを待ち受けできません。\n");
+    SET_ERR_MSG("condシグナルを待ち受けできません。\n");
     return false;
   }
 
@@ -269,12 +283,19 @@ static char* get_level_name(const log_level_t level) {
 static bool realloc_format_line(
     char** out, size_t* cap, const size_t needed_cap
 ) {
+  if (!out || !*out || !cap) {
+    SET_ERR_MSG(
+        "ログバッファまたは使用可能なメモリサイズが設定されていません。\n"
+    );
+    return false;
+  }
+
   if (needed_cap <= *cap) { return true; }
 
   *cap = (needed_cap) * 2;
   char* new_out = (char*)realloc(*out, *cap);
   if (!new_out) {
-    errout("ログバッファのメモリを再確保できません。\n");
+    SET_ERR_MSG("ログバッファのメモリを再確保できません。\n");
     return false;
   }
 
@@ -290,7 +311,7 @@ static bool realloc_format_line(
  */
 static char* format_line(const log_item_t* item) {
   if (!item) {
-    errout("ログデータが設定されていません。\n");
+    SET_ERR_MSG("ログデータが設定されていません。\n");
     return NULL;
   }
 
@@ -298,7 +319,7 @@ static char* format_line(const log_item_t* item) {
   size_t cap = MIN_LOG_SIZE;
   char* out = (char*)malloc(cap);
   if (!out) {
-    errout("初期ログバッファのメモリを確保できません。\n");
+    SET_ERR_MSG("初期ログバッファのメモリを確保できません。\n");
     return NULL;
   }
 
@@ -383,15 +404,16 @@ static char* format_line(const log_item_t* item) {
 /**
  * @brief ログを出力する。
  * @param item ログデータ。
+ * @return 成功: true, 失敗: false。
  */
-static void output_line(const log_item_t* item) {
+static bool output_line(const log_item_t* item) {
   if (!item) {
-    errout("ログデータが設定されていません。\n");
-    return;
+    SET_ERR_MSG("ログデータが設定されていません。\n");
+    return false;
   }
 
   char* line = format_line(item);
-  if (!line) { return; }
+  if (!line) { return false; }
 
   // 標準出力
   if ((g_param.out & LOG_STD_OUT) == LOG_STD_OUT) { printf("%s", line); }
@@ -402,6 +424,8 @@ static void output_line(const log_item_t* item) {
 
   free(line);
   fflush(g_param.fp);
+
+  return true;
 }
 
 /**
@@ -411,7 +435,7 @@ static void output_line(const log_item_t* item) {
  */
 static bool enqueue_item(log_item_t* item) {
   if (!g_param.async || !item) {
-    errout("非同期モードがオフまたはログデータが設定されていません。\n");
+    SET_ERR_MSG("非同期モードがオフまたはログデータが設定されていません。\n");
     return false;
   }
 
@@ -424,7 +448,7 @@ static bool enqueue_item(log_item_t* item) {
     res = true;
   } else {
     // キューに空きがない場合、先頭（古い）データを削除して追加
-    log_item_destroy(&g_param.queue[g_param.q_head]);
+    CHECK(log_item_destroy(&g_param.queue[g_param.q_head]));
     g_param.queue[g_param.q_head] = item;
     g_param.q_head = (g_param.q_head + 1) % g_param.nqueue;
     g_param.q_tail = (g_param.q_tail + 1) % g_param.nqueue;
@@ -440,7 +464,7 @@ static bool enqueue_item(log_item_t* item) {
  */
 static log_item_t* dequeue_item(void) {
   if (!g_param.async) {
-    errout("非同期モードがオフです。\n");
+    SET_ERR_MSG("非同期モードがオフです。\n");
     return NULL;
   }
 
@@ -464,27 +488,27 @@ static void* worker(void* arg) {
   (void)arg;
 
   while (true) {
-    if (!mutex_lock(&g_param.mutex)) { return NULL; }
+    CHECK_RETURN(mutex_lock(&g_param.mutex), NULL);
 
     // キューへのログデータ追加待ち
     while (g_param.worker_running && g_param.q_count == 0) {
-      if (!cond_wait(&g_param.cond, &g_param.mutex)) { return NULL; }
+      CHECK_RETURN(cond_wait(&g_param.cond, &g_param.mutex), NULL);
     }
 
     // 無限ループを終了
     if (!g_param.worker_running && g_param.q_count == 0) {
-      if (!mutex_unlock(&g_param.mutex)) { return NULL; }
+      CHECK(mutex_unlock(&g_param.mutex));
       break;
     }
 
     // キューからログデータを取得してストリームに出力
     log_item_t* item = dequeue_item();
 
-    if (!mutex_unlock(&g_param.mutex)) { return NULL; }
+    CHECK(mutex_unlock(&g_param.mutex));
 
     if (item) {
-      output_line(item);
-      log_item_destroy(&item);
+      CHECK(output_line(item));
+      CHECK(log_item_destroy(&item));
     }
   }
 
@@ -536,7 +560,7 @@ static bool logger_set_format(const char* fmt) {
  */
 static bool logger_set_stream(const char* fpath) {
   if (!fpath) {
-    errout("ファイルパスが設定されていません。\n");
+    SET_ERR_MSG("ファイルパスが設定されていません。\n");
     return false;
   }
 
@@ -562,11 +586,17 @@ static bool logger_set_async(const bool async) {
   if (!g_param.queue) { return false; }
 
   g_param.worker_running = true;
-  pthread_mutex_init(&g_param.mutex, NULL);
-  pthread_cond_init(&g_param.cond, NULL);
+  if (pthread_mutex_init(&g_param.mutex, NULL) != 0) {
+    SET_ERR_MSG("非同期モード用mutexが初期化できません。\n");
+    return false;
+  }
+  if (pthread_cond_init(&g_param.cond, NULL) != 0) {
+    SET_ERR_MSG("非同期モード用condが初期化できません。\n");
+    return false;
+  }
   if (pthread_create(&g_param.worker, NULL, worker, NULL) != 0) {
     g_param.worker_running = false;
-    errout("非同期モード用スレッドが作成できません。\n");
+    SET_ERR_MSG("非同期モード用スレッドが作成できません。\n");
     return false;
   }
 
@@ -595,11 +625,11 @@ bool logger_init(
   // ログレベルを設定
   logger_set_level(level);
   // ログフォーマットを設定
-  if (!logger_set_format(fmt)) { return false; };
+  CHECK_RETURN(logger_set_format(fmt), false);
   // ログストリームを設定
-  if (!logger_set_stream(fpath)) { return false; }
+  CHECK_RETURN(logger_set_stream(fpath), false);
   // 非同期モードを設定
-  if (!logger_set_async(async)) { return false; }
+  CHECK_RETURN(logger_set_async(async), false);
 
   return true;
 }
@@ -610,24 +640,18 @@ bool logger_init(
 void logger_close(void) {
   if (g_param.async) {
     // スレッドを停止
-    if (!mutex_lock(&g_param.mutex)) { return; }
+    CHECK_RETURN_VOID(mutex_lock(&g_param.mutex));
     g_param.worker_running = false;
-    if (!cond_signal(&g_param.cond)) { return; }
-    if (!mutex_unlock(&g_param.mutex)) { return; }
+    CHECK(cond_signal(&g_param.cond));
+    CHECK(mutex_unlock(&g_param.mutex));
     pthread_join(g_param.worker, NULL);
 
-    // キューに残っているログを出力
-    log_item_t* item;
-    while ((item = dequeue_item()) != NULL) {
-      output_line(item);
-      log_item_destroy(&item);
-    }
-    queue_destroy(&g_param.queue);
+    CHECK(queue_destroy(&g_param.queue));
     pthread_mutex_destroy(&g_param.mutex);
     pthread_cond_destroy(&g_param.cond);
   }
-  fp_destroy(&g_param.fp);
-  format_destroy(&g_param.format);
+  CHECK(fp_destroy(&g_param.fp));
+  CHECK(format_destroy(&g_param.format));
 }
 
 /**
@@ -648,34 +672,30 @@ void logger_log(
   if (!fmt) { return; }
   if (level < g_param.level) { return; }
 
-  int len;
-  va_list ap, ap2;
-  char* msg = NULL;
-  char small_buff[SMALL_VAR_SIZE];
-
-  // 可変長引数のフォーマット
+  va_list ap;
   va_start(ap, fmt);
-  va_copy(ap2, ap);
 
-  len = vsnprintf(small_buff, sizeof(small_buff), fmt, ap2);
-  va_end(ap2);
+  // 必要サイズの取得
+  va_list ap_copy;
+  va_copy(ap_copy, ap);
+  int needed = vsnprintf(NULL, 0, fmt, ap_copy);
+  va_end(ap_copy);
+  if (needed < 0) {
+    va_end(ap);
+    return;
+  }
 
-  if (len < 0) {
-    msg = my_strdup("<format-error>");
-  } else if ((size_t)len < sizeof(small_buff)) {
-    msg = my_strdup(small_buff);
-  } else {
-    size_t sz = (size_t)len + 1;
-    msg = (char*)malloc(sz);
-    if (!msg) {
-      va_end(ap);
-      return;
-    }
-    if (vsnprintf(msg, sz, fmt, ap) < 0) {
-      free(msg);
-      va_end(ap);
-      return;
-    }
+  // フォーマット部分のメモリ確保
+  char* msg = malloc((size_t)needed + 1);
+  if (!msg) {
+    va_end(ap);
+    return;
+  }
+
+  if (vsnprintf(msg, (size_t)needed + 1, fmt, ap) < 0) {
+    free(msg);
+    va_end(ap);
+    return;
   }
   va_end(ap);
 
@@ -691,7 +711,7 @@ void logger_log(
         .line = line,
         .msg = msg,
     };
-    output_line(&item);
+    CHECK(output_line(&item));
     free(msg);
     return;
   }
@@ -699,7 +719,7 @@ void logger_log(
   // 非同期モード（項目を確保してキューに追加）
   log_item_t* item = log_item_init();
   if (!item) {
-    errout("非同期モードのログデータのメモリを確保できません。\n");
+    out_error_msg();
     free(msg);
     return;
   }
@@ -709,11 +729,11 @@ void logger_log(
   item->line = line;
   item->msg = msg;
 
-  if (!mutex_lock(&g_param.mutex)) { return; }
+  CHECK_RETURN_VOID(mutex_lock(&g_param.mutex));
   if (enqueue_item(item)) {
-    if (!cond_signal(&g_param.cond)) { return; }
+    CHECK(cond_signal(&g_param.cond));
   } else {
-    log_item_destroy(&item);
+    CHECK(log_item_destroy(&item));
   }
-  if (!mutex_unlock(&g_param.mutex)) { return; }
+  CHECK(mutex_unlock(&g_param.mutex));
 }

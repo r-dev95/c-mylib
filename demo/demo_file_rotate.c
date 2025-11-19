@@ -4,7 +4,7 @@
 
 #include "logger/rotator.h"
 
-int main() {
+int main(void) {
   int len = 0;
   int count = 0;
   int fin_flag = 0;
