@@ -8,83 +8,111 @@
 
 /**
  * @brief キー・バリューデータのメモリを確保する。
- * @return キー・バリューデータのポインタ。
+ * @return キー・バリューデータ。
  */
 static IniKV* ini_kv_init(void) {
   IniKV* self = calloc(1, sizeof(*self));
-  if (!self) return NULL;
+  if (!self) {
+    SET_ERR_MSG("キー・バリューデータのメモリを確保できません。\n");
+    return NULL;
+  }
 
   return self;
 }
 
 /**
  * @brief キー・バリューデータのメモリを解放する。
- * @param self キー・バリューデータのポインタ。
+ * @param self キー・バリューデータ。
+ * @return 成功: true, 失敗: false。
  */
-static void ini_kv_destroy(IniKV* self) {
-  if (!self) return;
+static bool ini_kv_destroy(IniKV** self) {
+  if (!self || !*self) {
+    SET_ERR_MSG("キー・バリューデータが設定されていません。\n");
+    return false;
+  }
 
-  free(self->key);
-  free(self->value);
-  free(self);
-  self = NULL;
+  if ((*self)->key) { free((*self)->key); }
+  if ((*self)->value) { free((*self)->value); }
+  free(*self);
+  *self = NULL;
+
+  return true;
 }
 
 /**
  * @brief セクションデータのメモリを確保する。
- * @return セクションデータのポインタ。
+ * @return セクションデータ。
  */
 static IniSection* ini_section_init(void) {
   IniSection* self = calloc(1, sizeof(*self));
-  if (!self) return NULL;
+  if (!self) {
+    SET_ERR_MSG("セクションデータのメモリを確保できません。\n");
+    return NULL;
+  }
 
   return self;
 }
 
 /**
- * @brief セクションデータおよびキー・バリューデータのメモリを解放する。
- * @param self セクションデータのポインタ。
+ * @brief セクションデータのメモリを解放する。
+ * @param self セクションデータ。
+ * @return 成功: true, 失敗: false。
  */
-static void ini_section_destroy(IniSection* self) {
-  if (!self) return;
-
-  for (IniKV* kv = self->kv; kv;) {
-    IniKV* del_kv = kv;
-    kv = kv->next;
-    ini_kv_destroy(del_kv);
+static bool ini_section_destroy(IniSection** self) {
+  if (!self || !*self) {
+    SET_ERR_MSG("セクションデータが設定されていません。\n");
+    return false;
   }
 
-  free(self->name);
-  free(self);
-  self = NULL;
+  IniKV* del_kv;
+  for (IniKV* kv = (*self)->kv; kv;) {
+    del_kv = kv;
+    kv = kv->next;
+    ini_kv_destroy(&del_kv);
+  }
+
+  if ((*self)->name) { free((*self)->name); }
+  free(*self);
+  *self = NULL;
+
+  return true;
 }
 
 /**
  * @brief Iniデータのメモリを確保する。
- * @return Iniデータのポインタ。
+ * @return Iniデータ。
  */
 static Ini* ini_init(void) {
   Ini* self = calloc(1, sizeof(*self));
-  if (!self) return NULL;
+  if (!self) {
+    SET_ERR_MSG("Iniデータのメモリを確保できません。\n");
+    return NULL;
+  }
 
   return self;
 }
 
 /**
  * @brief Iniデータおよびセクションデータのメモリを解放する。
- * @param self Iniデータのポインタ。
+ * @param self Iniデータ。
  */
-static void ini_destroy(Ini* self) {
-  if (!self) return;
-
-  for (IniSection* sec = self->sections; sec;) {
-    IniSection* del_sec = sec;
-    sec = sec->next;
-    ini_section_destroy(del_sec);
+static bool ini_destroy(Ini** self) {
+  if (!self || !*self) {
+    SET_ERR_MSG("Iniデータが設定されていません。\n");
+    return false;
   }
 
-  free(self);
-  self = NULL;
+  IniSection* del_sec;
+  for (IniSection* sec = (*self)->sections; sec;) {
+    del_sec = sec;
+    sec = sec->next;
+    ini_section_destroy(&del_sec);
+  }
+
+  free(*self);
+  *self = NULL;
+
+  return true;
 }
 
 /**
@@ -92,9 +120,13 @@ static void ini_destroy(Ini* self) {
  *
  * - クォーテーション内は削除対象としない。
  * @param str 文字列。
+ * @return 成功: true, 失敗: false。
  */
-static void remove_inline_comment(char* str) {
-  if (!str) return;
+static bool remove_inline_comment(char* str) {
+  if (!str) {
+    SET_ERR_MSG("文字列が設定されていません。\n");
+    return false;
+  }
 
   bool in_quote = false;
   char quote_char = 0;
@@ -114,6 +146,8 @@ static void remove_inline_comment(char* str) {
       break;
     }
   }
+
+  return true;
 }
 
 /**
@@ -123,15 +157,16 @@ static void remove_inline_comment(char* str) {
  * @return キー・バリューデータ。
  */
 static IniKV* find_key(IniSection* sec, const char* key) {
-  if (!sec || !key) return NULL;
+  if (!sec || !key) {
+    SET_ERR_MSG("セクションデータまたはキー名が設定されていません。\n");
+    return NULL;
+  }
 
-  IniKV* kv = sec->kv;
-  while (kv) {
-    if (kv->key && strcmp(kv->key, key) == 0) {
-      return kv;
-    }
+  for (IniKV* kv = sec->kv; kv;) {
+    if (kv->key && strcmp(kv->key, key) == 0) { return kv; }
     kv = kv->next;
   }
+
   return NULL;
 }
 
@@ -143,16 +178,19 @@ static IniKV* find_key(IniSection* sec, const char* key) {
  */
 static IniSection* find_section(Ini* ini, const char* name) {
   // グローバルセクション名はNULLのため早期リターンの条件にしない
-  if (!ini) return NULL;
+  if (!ini) {
+    SET_ERR_MSG("Iniデータが設定されていません。\n");
+    return NULL;
+  }
 
-  IniSection* sec = ini->sections;
-  while (sec) {
+  for (IniSection* sec = ini->sections; sec;) {
     if ((sec->name == NULL && name == NULL) ||
         (sec->name && name && strcmp(sec->name, name) == 0)) {
       return sec;
     }
     sec = sec->next;
   }
+
   return NULL;
 }
 
@@ -166,28 +204,30 @@ static IniSection* find_section(Ini* ini, const char* name) {
  * @return 成功: true, 失敗: false。
  */
 static bool make_kv(IniSection* sec, const char* key, const char* value) {
-  if (!sec || !key) return false;
+  if (!sec || !key) {
+    SET_ERR_MSG("セクションデータまたはキー名が設定されていません。\n");
+    return false;
+  }
 
   // 既存キーがある場合、バリューを上書き
   IniKV* kv = find_key(sec, key);
   if (kv) {
-    char* new_value = my_strdup(value);
-    if (!new_value) return false;
+    if (kv->value) { free(kv->value); }
+    kv->value = my_strdup(value);
+    if (!kv->value) { return false; }
 
-    if (kv->value) free(kv->value);
-    kv->value = new_value;
     return true;
   }
 
   // 新規キー・バリューを末尾に追加
   IniKV* new_kv = ini_kv_init();
-  if (!new_kv) return false;
+  if (!new_kv) { return false; }
 
   new_kv->key = my_strdup(key);
   new_kv->value = my_strdup(value);
   if (!new_kv->key || !new_kv->value) {
-    if (new_kv->key) free(new_kv->key);
-    if (new_kv->value) free(new_kv->value);
+    if (new_kv->key) { free(new_kv->key); }
+    if (new_kv->value) { free(new_kv->value); }
     free(new_kv);
     return false;
   }
@@ -212,11 +252,17 @@ static bool make_kv(IniSection* sec, const char* key, const char* value) {
  * @return セクションデータ。
  */
 static IniSection* make_section(Ini* ini, const char* name) {
+  // グローバルセクション名はNULLのため早期リターンの条件にしない
+  if (!ini) {
+    SET_ERR_MSG("Iniデータまたはセクション名が設定されていません。\n");
+    return NULL;
+  }
+
   IniSection* sec = find_section(ini, name);
-  if (sec) return sec;
+  if (sec) { return sec; }
 
   IniSection* new_sec = ini_section_init();
-  if (!new_sec) return NULL;
+  if (!new_sec) { return NULL; }
 
   new_sec->name = name ? my_strdup(name) : NULL;
 
@@ -229,63 +275,69 @@ static IniSection* make_section(Ini* ini, const char* name) {
     while (tail->next) tail = tail->next;
     tail->next = new_sec;
   }
+
   return new_sec;
 }
 
 static bool ini_parse(FILE* fp, Ini* ini, IniSection* cur_sec) {
   size_t cap = 0;
   size_t len;
+  size_t nlen;
   char* line = NULL;
+  char* secname;
+  char* end;
+  char* eq;
+  char* key;
+  char* value;
+  IniSection* new_sec;
+
   while ((len = my_getline(&line, &cap, fp)) != 0) {
     remove_newline(line, len);
     remove_inline_comment(line);
     remove_spaces(line);
-    if (*line == '\0') continue;                 // 空行
-    if (*line == ';' || *line == '#') continue;  // 行頭コメント
+    if (*line == '\0') { continue; }                 // 空行
+    if (*line == ';' || *line == '#') { continue; }  // 行頭コメント
 
     // セクションを探索して追加
     if (line[0] == '[') {
-      char* end = strchr(line, ']');
+      end = strchr(line, ']');
       if (end) {
-        size_t nlen = (size_t)(end - (line + 1));
-        char* secname = malloc(nlen + 1);
-        if (!secname) return false;
+        nlen = (size_t)(end - (line + 1));
+        secname = malloc(nlen + 1);
+        if (!secname) {
+          SET_ERR_MSG("セクション名のメモリを確保できません。\n");
+          return false;
+        }
 
         memcpy(secname, line + 1, nlen);
         secname[nlen] = '\0';
         remove_spaces(secname);
-        IniSection* new_sec = make_section(ini, secname);
-        if (!new_sec) {
-          fprintf(stderr, "セクションが作成できません。\n");
-          return false;
-        }
+        new_sec = make_section(ini, secname);
+        if (!new_sec) { return false; }
 
         cur_sec = new_sec;
         free(secname);
         continue;
       } else {
-        fprintf(stderr, "セクションの閉じ括弧\"]\"がありません。\n");
+        SET_ERR_MSG("セクションの閉じ括弧\"]\"がありません。\n");
         return false;
       }
     }
 
     // キー・バリューを探索して追加
-    char* eq = strchr(line, '=');
-    if (!eq) continue;
+    eq = strchr(line, '=');
+    if (!eq) { continue; }
 
     *eq = '\0';
-    char* key = line;
-    char* value = eq + 1;
+    key = line;
+    value = eq + 1;
     remove_spaces(key);
     remove_spaces(value);
     remove_quotes(value);
-    if (!make_kv(cur_sec, key, value)) {
-      fprintf(stderr, "キー・バリューが設定できません。\n");
-      return false;
-    }
+    if (!make_kv(cur_sec, key, value)) { return false; }
   }
-
   free(line);
+
   return true;
 }
 
@@ -301,13 +353,14 @@ static bool ini_parse(FILE* fp, Ini* ini, IniSection* cur_sec) {
 Ini* ini_load(const char* fpath) {
   FILE* fp = fopen(fpath, "r");
   if (!fp) {
-    fprintf(stderr, "iniファイルを開けません。[%s]\n", fpath);
+    SET_ERR_MSG("iniファイルを開けません。[%s]\n", fpath);
+    out_error_msg();
     return NULL;
   }
 
   Ini* ini = ini_init();
   if (!ini) {
-    fprintf(stderr, "Iniデータのメモリを確保できません。\n");
+    out_error_msg();
     fclose(fp);
     return NULL;
   }
@@ -315,16 +368,16 @@ Ini* ini_load(const char* fpath) {
   // グローバルセクションを作成
   IniSection* cur_sec = make_section(ini, NULL);
   if (!cur_sec) {
-    fprintf(stderr, "グローバルセクションが作成できません。\n");
-    ini_destroy(ini);
+    out_error_msg();
+    CHECK(ini_destroy(&ini));
     fclose(fp);
     return NULL;
   }
 
   // iniファイルを解析してデータを取得
   if (!ini_parse(fp, ini, cur_sec)) {
-    fprintf(stderr, "iniファイルを解析できません。\n");
-    ini_destroy(ini);
+    out_error_msg();
+    CHECK(ini_destroy(&ini));
     fclose(fp);
     return NULL;
   }
@@ -335,19 +388,44 @@ Ini* ini_load(const char* fpath) {
 
 /**
  * @brief iniファイル操作を終了する。
- * @param ini Iniデータのポインタ。
+ * @param ini Iniデータ。
  */
 void ini_close(Ini* ini) {
-  if (!ini) return;
+  if (!ini) { return; }
 
-  ini_destroy(ini);
+  CHECK(ini_destroy(&ini));
+}
+
+/**
+ * @brief Iniデータをすべて標準出力する。
+ * @param ini Iniデータ。
+ */
+void ini_dump(Ini* ini) {
+  if (!ini) {
+    SET_ERR_MSG("Iniデータが設定されていません。\n");
+    out_error_msg();
+    return;
+  }
+
+  for (IniSection* sec = ini->sections; sec;) {
+    printf("sec->name[%s]\n", sec->name ? sec->name : "global");
+    for (IniKV* kv = sec->kv; kv;) {
+      printf(
+          "kv->key[%s], kv->value[%s]\n", kv->key ? kv->key : "NULL",
+          kv->value ? kv->value : "NULL"
+      );
+      kv = kv->next;
+    }
+    printf("\n");
+    sec = sec->next;
+  }
 }
 
 /**
  * @brief Iniデータからセクションとキーに対応するバリューを取得する。
  *
  * - 対応するセクションとキーが存在しない場合、デフォルトのバリューを返す。
- * @param ini Iniデータのポインタ。
+ * @param ini Iniデータ。
  * @param section セクション名。
  * @param key キー名。
  * @param default_value デフォルトバリュー。
@@ -356,13 +434,16 @@ void ini_close(Ini* ini) {
 const char* ini_get(
     Ini* ini, const char* section, const char* key, const char* default_value
 ) {
-  if (!ini || !key) return default_value;
+  if (!ini || !key) {
+    SET_ERR_MSG("Iniデータまたはセクション名が設定されていません。\n");
+    return default_value;
+  }
 
   IniSection* sec = find_section(ini, section);
-  if (!sec) return default_value;
+  CHECK_RETURN(sec, default_value);
 
   IniKV* kv = find_key(sec, key);
-  if (!kv) return default_value;
+  CHECK_RETURN(kv, default_value);
 
   return kv->value;
 }
