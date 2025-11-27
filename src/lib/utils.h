@@ -5,7 +5,6 @@
 #pragma once
 
 #include <ctype.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +15,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// 最小値取得関数マクロ
+#define MIN(a, b) (a < b ? a : b)
 
 void set_error_msg(
     const char* fpath, const char* func, const int line, const char* fmt, ...
@@ -34,30 +36,6 @@ size_t my_getline(char** line, size_t* size, FILE* stream);
 void remove_newline(char* str, size_t len);
 void remove_spaces(char* str);
 void remove_quotes(char* str);
-
-#define SET_ERR_MSG(...) \
-  set_error_msg(__FILE__, __func__, __LINE__, __VA_ARGS__)
-
-#define CHECK(expr)                   \
-  do {                                \
-    if (!(expr)) { out_error_msg(); } \
-  } while (0)
-
-#define CHECK_RETURN(expr, retval) \
-  do {                             \
-    if (!(expr)) {                 \
-      out_error_msg();             \
-      return (retval);             \
-    }                              \
-  } while (0)
-
-#define CHECK_RETURN_VOID(expr) \
-  do {                          \
-    if (!(expr)) {              \
-      out_error_msg();          \
-      return;                   \
-    }                           \
-  } while (0)
 
 #ifdef __cplusplus
 }

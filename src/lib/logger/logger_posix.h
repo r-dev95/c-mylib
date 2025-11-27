@@ -1,7 +1,7 @@
 /**
  * ログ処理用ヘッダ。
  *
- * - Posix (Linux/Mac OS)標準: pthread.h
+ * - Posix (Linux/Mac OS)標準
  */
 
 #pragma once
@@ -75,14 +75,14 @@ static log_param_t g_param = {
 };
 
 static log_item_t* log_item_init(void);
-static bool log_item_destroy(log_item_t** item);
+static void log_item_destroy(log_item_t** item);
 static char* format_init(const char* fmt);
-static bool format_destroy(char** self);
+static void format_destroy(char** self);
 static FILE* fp_init(const char* fpath);
-static bool fp_destroy(FILE** self);
+static void fp_destroy(FILE** self);
 static bool fp_setvbuf(FILE* self, const size_t bufsize);
 static log_item_t** queue_init(const size_t nqueue);
-static bool queue_destroy(log_item_t*** self);
+static void queue_destroy(log_item_t*** self);
 static bool mutex_lock(pthread_mutex_t* mutex);
 static bool mutex_unlock(pthread_mutex_t* mutex);
 static bool cond_signal(pthread_cond_t* cond);

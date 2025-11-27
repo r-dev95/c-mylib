@@ -12,9 +12,6 @@
 
 #include "rotator.h"
 
-// 最小値取得関数マクロ
-#define MIN(a, b) (a < b ? a : b)
-
 // ファイルパスのバイトサイズ
 #define FPATH_SIZE 256
 // 初回読み込みファイル数
@@ -53,12 +50,12 @@ static rot_param_t g_param = {
 };
 
 static FILE* fp_init(const char* fpath);
-static bool fp_destroy(FILE** self);
+static void fp_destroy(FILE** self);
 static file_info_t* finfo_init(void);
-static bool finfo_destroy(file_info_t** self);
+static void finfo_destroy(file_info_t** self);
 static bool finfo_update(file_info_t** self, file_info_t* info);
 static file_list_t* flist_init(size_t max_fno);
-static bool flist_destroy(file_list_t** self);
+static void flist_destroy(file_list_t** self);
 static int flist_add_finfo(file_list_t* self, file_info_t* info);
 static bool flist_del_last_finfo(file_list_t* self);
 static bool flist_realloc_finfo(file_list_t** self);
