@@ -4,6 +4,7 @@
 
 #include "rotator_file.h"
 
+#include "error/error.h"
 #include "utils.h"
 
 /**
@@ -13,13 +14,13 @@
  */
 static FILE* fp_init(const char* fpath) {
   if (!fpath) {
-    SET_ERR_MSG("パスが設定されていません。\n");
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return NULL;
   }
 
   FILE* self = fopen(fpath, "a");
   if (!self) {
-    SET_ERR_MSG("ファイルがオープンできません。[%s]\n", fpath);
+    SET_ERR_LOG_AUTO(ERR_FILE_OPEN_FAILED);
     return NULL;
   }
 
@@ -29,19 +30,13 @@ static FILE* fp_init(const char* fpath) {
 /**
  * @brief ファイルをフラッシュして閉じる。
  * @param self ファイルストリーム。
- * @return 成功: true, 失敗: false。
  */
-static bool fp_destroy(FILE** self) {
-  if (!self || !*self) {
-    SET_ERR_MSG("ファイルストリームが設定されていません。\n");
-    return false;
-  }
+static void fp_destroy(FILE** self) {
+  if (!self || !*self) { return; }
 
   fflush(*self);
   fclose(*self);
   *self = NULL;
-
-  return true;
 }
 
 /**
@@ -51,7 +46,7 @@ static bool fp_destroy(FILE** self) {
 static file_info_t* finfo_init(void) {
   file_info_t* self = calloc(1, sizeof(*self));
   if (!self) {
-    SET_ERR_MSG("ファイル情報データのメモリを確保できません。\n");
+    SET_ERR_LOG_AUTO(ERR_MEM_ALLOC_FAILED);
     return NULL;
   }
 
@@ -61,19 +56,13 @@ static file_info_t* finfo_init(void) {
 /**
  * @brief ファイル情報データのメモリを解放する。
  * @param self ファイル情報データ。
- * @return 成功: true, 失敗: false。
  */
-static bool finfo_destroy(file_info_t** self) {
-  if (!self || !*self) {
-    SET_ERR_MSG("ファイル情報データが設定されていません。\n");
-    return false;
-  }
+static void finfo_destroy(file_info_t** self) {
+  if (!self || !*self) { return; }
 
   if ((*self)->fpath) { free((*self)->fpath); }
   free(*self);
   *self = NULL;
-
-  return true;
 }
 
 /**
@@ -84,9 +73,7 @@ static bool finfo_destroy(file_info_t** self) {
  */
 static bool finfo_update(file_info_t** self, file_info_t* info) {
   if (!self || !*self || !info) {
-    SET_ERR_MSG(
-        "更新先または更新元のファイル情報データが設定されていません。\n"
-    );
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -110,23 +97,23 @@ static bool finfo_update(file_info_t** self, file_info_t* info) {
  */
 static file_list_t* flist_init(size_t max_fno) {
   if (max_fno < 1) {
-    SET_ERR_MSG(
-        "ファイル情報データの数は[1]以上で設定してください。[%zu]\n", max_fno
+    SET_ERR_LOG(
+        ERR_INVALID_ARG,
+        "The number of file infomation data must be set to 1 or more. [%zu]",
+        max_fno
     );
     return NULL;
   }
 
   file_list_t* self = calloc(1, sizeof(*self));
   if (!self) {
-    SET_ERR_MSG("ファイル情報リストのメモリを確保できません。\n");
+    SET_ERR_LOG_AUTO(ERR_MEM_ALLOC_FAILED);
     return NULL;
   }
 
   self->finfos = calloc(max_fno, sizeof(*self->finfos));
   if (!self->finfos) {
-    SET_ERR_MSG(
-        "ファイル情報データ配列のメモリを確保できません。[%zu]\n", max_fno
-    );
+    SET_ERR_LOG_AUTO(ERR_MEM_ALLOC_FAILED);
     free(self);
     return NULL;
   }
@@ -139,13 +126,9 @@ static file_list_t* flist_init(size_t max_fno) {
 /**
  * @brief ファイル情報リストのメモリを解放する。
  * @param self ファイル情報リスト。
- * @return 成功: true, 失敗: false。
  */
-static bool flist_destroy(file_list_t** self) {
-  if (!self || !*self) {
-    SET_ERR_MSG("ファイル情報リストが設定されていません。\n");
-    return false;
-  }
+static void flist_destroy(file_list_t** self) {
+  if (!self || !*self) { return; }
 
   if ((*self)->finfos) {
     for (size_t i = 0; i < (*self)->cur_fno; i++) {
@@ -155,8 +138,6 @@ static bool flist_destroy(file_list_t** self) {
   }
   free(*self);
   *self = NULL;
-
-  return true;
 }
 
 /**
@@ -167,17 +148,12 @@ static bool flist_destroy(file_list_t** self) {
  */
 static int flist_add_finfo(file_list_t* self, file_info_t* info) {
   if (!self || !info) {
-    SET_ERR_MSG(
-        "ファイル情報リストまたはファイル情報データが設定されていません。\n"
-    );
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return 1;
   }
 
   if (self->cur_fno + 1 > self->max_fno) {
-    SET_ERR_MSG(
-        "ファイル情報データ配列の格納最大数を超えました。[%zu/%zu]\n",
-        self->cur_fno + 1, self->max_fno
-    );
+    SET_ERR_LOG_AUTO(ERR_MEM_OUT_OF_RANGE);
     return -1;
   }
 
@@ -201,7 +177,7 @@ static int flist_add_finfo(file_list_t* self, file_info_t* info) {
  */
 static bool flist_del_last_finfo(file_list_t* self) {
   if (!self) {
-    SET_ERR_MSG("ファイル情報リストが設定されていません。\n");
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -218,7 +194,7 @@ static bool flist_del_last_finfo(file_list_t* self) {
  */
 static bool flist_realloc_finfo(file_list_t** self) {
   if (!self || !*self) {
-    SET_ERR_MSG("ファイル情報リストが設定されていません。\n");
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -226,9 +202,7 @@ static bool flist_realloc_finfo(file_list_t** self) {
   size_t cap = (*self)->max_fno * sizeof(file_info_t*);
   file_info_t** new_infos = realloc((*self)->finfos, cap);
   if (!new_infos) {
-    SET_ERR_MSG(
-        "ファイル情報データ配列のメモリを再確保できません。[%zu]\n", cap
-    );
+    SET_ERR_LOG_AUTO(ERR_MEM_ALLOC_FAILED);
     return false;
   }
 
@@ -261,10 +235,7 @@ static int compare_mtime_desc(const void* a, const void* b) {
  */
 static bool sort_file_list_desc(file_list_t* flist) {
   if (!flist || flist->cur_fno == 0) {
-    SET_ERR_MSG(
-        "ファイル情報リストが設定されていません。\n"
-        "またはファイル情報データ配列の要素が0個です。\n"
-    );
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -283,9 +254,7 @@ static bool sort_file_list_desc(file_list_t* flist) {
  */
 static bool make_fpath(char* new_fpath, const char* fpath) {
   if (!new_fpath || !fpath) {
-    SET_ERR_MSG(
-        "新規ファイルパスまたは元のファイルパスが設定されていません。\n"
-    );
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -306,7 +275,7 @@ static bool make_fpath(char* new_fpath, const char* fpath) {
  */
 static file_info_t* get_file_info(const char* fpath) {
   if (!fpath) {
-    SET_ERR_MSG("ファイルパスが設定されていません。\n");
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return NULL;
   }
 
@@ -315,11 +284,17 @@ static file_info_t* get_file_info(const char* fpath) {
   if (!info) { return NULL; }
 
   if (stat(fpath, &st) != 0) {
-    SET_ERR_MSG("ファイルがありません。[%s]\n", fpath);
+    SET_ERR_LOG(
+        ERR_FILE_INVALID_PATH, "%s: file does not exist. [%s]",
+        code_to_msg(ERR_FILE_INVALID_PATH), fpath
+    );
     return NULL;
   }
   if (S_ISDIR(st.st_mode)) {
-    SET_ERR_MSG("ファイルではなくディレクトリです。[%s]\n", fpath);
+    SET_ERR_LOG(
+        ERR_IO_ERROR, "%s: It's a directory, not a file. [%s]",
+        code_to_msg(ERR_FILE_INVALID_PATH), fpath
+    );
     return NULL;
   }
 
@@ -350,7 +325,10 @@ static bool get_all_file_info(
 
   DIR* dir = opendir(dpath);
   if (!dir) {
-    SET_ERR_MSG("ディレクトリをオープンできません。[%s]\n", dpath);
+    SET_ERR_LOG(
+        ERR_IO_ERROR, "%s: Unable to open directory. [%s]",
+        code_to_msg(ERR_IO_ERROR), dpath
+    );
     return false;
   }
 
@@ -365,23 +343,23 @@ static bool get_all_file_info(
         if (res == -1) {
           // ファイル情報データ配列のメモリを再確保して再度データを追加
           if (!flist_realloc_finfo(&flist)) {
-            if (!finfo_destroy(&info)) { return false; }
+            finfo_destroy(&info);
             return false;
           }
           if ((res = flist_add_finfo(flist, info)) != 0) {
-            if (!finfo_destroy(&info)) { return false; }
+            finfo_destroy(&info);
             return false;
           }
         } else {
-          if (!finfo_destroy(&info)) { return false; }
+          finfo_destroy(&info);
           return false;
         }
       }
-      if (!finfo_destroy(&info)) { return false; }
+      finfo_destroy(&info);
     }
   }
   closedir(dir);
-  if (!sort_file_list_desc(flist)) { return false; }
+  sort_file_list_desc(flist);
 
   return true;
 }
@@ -411,10 +389,7 @@ static bool rotator_set_base_fpath(
     const char* dpath, const char* fname, const char* extension
 ) {
   if (!dpath || !fname || !extension) {
-    SET_ERR_MSG(
-        "ディレクトリパスまたはファイル名（拡張子含まない）、拡張子（ドット含む"
-        "）が設定されていません。\n"
-    );
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
@@ -445,11 +420,11 @@ static bool rotator_set_file_info(const char* dpath, const char* extension) {
   size_t loop_num = MIN(all_flist->cur_fno, flist->max_fno);
   for (size_t i = 0; i < loop_num; i++) {
     if (flist_add_finfo(flist, all_flist->finfos[i]) != 0) {
-      if (!flist_destroy(&all_flist)) { return false; }
+      flist_destroy(&all_flist);
       return false;
     }
   }
-  if (!flist_destroy(&all_flist)) { return false; }
+  flist_destroy(&all_flist);
 
   // 書き込み（最新）ファイルのオープン
   if (flist->cur_fno == 0) {
@@ -460,11 +435,11 @@ static bool rotator_set_file_info(const char* dpath, const char* extension) {
     if (!info) { return false; }
 
     if (flist_add_finfo(flist, info) != 0) {
-      if (!finfo_destroy(&info)) { return false; }
+      finfo_destroy(&info);
       return false;
     }
 
-    if (!finfo_destroy(&info)) { return false; }
+    finfo_destroy(&info);
   } else {
     g_param.fp = fp_init(flist->finfos[0]->fpath);
     if (!g_param.fp) { return false; }
@@ -497,9 +472,9 @@ bool rotator_init(
   // 最大ファイルアーカイブ数の設定
   rotator_set_max_fno(max_fno);
   // ベースファイルパスの設定
-  CHECK_RETURN(rotator_set_base_fpath(dpath, fname, extension), false);
+  if (!rotator_set_base_fpath(dpath, fname, extension)) { return false; }
   // ファイル情報リストの設定
-  CHECK_RETURN(rotator_set_file_info(dpath, extension), false);
+  if (!rotator_set_file_info(dpath, extension)) { return false; }
 
   return true;
 }
@@ -508,8 +483,8 @@ bool rotator_init(
  * @brief ローテーション処理を終了する。
  */
 void rotator_close(void) {
-  CHECK(fp_destroy(&g_param.fp));
-  CHECK(flist_destroy(&g_param.flist));
+  fp_destroy(&g_param.fp);
+  flist_destroy(&g_param.flist);
 }
 
 /**
@@ -526,41 +501,41 @@ bool rotator_rotate(size_t len) {
   if (g_param.max_fsize != 0 &&
       flist->finfos[0]->fsize + len > g_param.max_fsize) {
     // 最新ファイルを閉じてリネーム
-    CHECK(fp_destroy(&g_param.fp));
-    CHECK_RETURN(make_fpath(new_fpath, flist->finfos[0]->fpath), false);
+    fp_destroy(&g_param.fp);
+    if (!make_fpath(new_fpath, flist->finfos[0]->fpath)) { return false; }
     rename(flist->finfos[0]->fpath, new_fpath);
 
     // ファイル情報データを更新
     file_info_t* info = get_file_info(new_fpath);
-    CHECK_RETURN(info, false);
+    if (!info) { return false; }
 
-    CHECK_RETURN(finfo_update(&flist->finfos[0], info), false);
+    if (!finfo_update(&flist->finfos[0], info)) { return false; }
 
-    CHECK(finfo_destroy(&info));
-    CHECK(sort_file_list_desc(flist));
+    finfo_destroy(&info);
+    sort_file_list_desc(flist);
 
     // アーカイブファイル数の確認
     if (flist->cur_fno + 1 > flist->max_fno) {
       if (flist->max_fno != 1) {
         remove(flist->finfos[flist->cur_fno - 1]->fpath);
       }
-      CHECK_RETURN(flist_del_last_finfo(flist), false);
+      if (!flist_del_last_finfo(flist)) { return false; }
     }
 
     // 次の書き込みファイルをオープンしてファイル情報リストを更新
     g_param.fp = fp_init(g_param.base_fpath);
-    CHECK_RETURN(g_param.fp, false);
+    if (!g_param.fp) { return false; }
 
     info = get_file_info(g_param.base_fpath);
-    CHECK_RETURN(info, false);
+    if (!info) { return false; }
 
     info->mtime += 1;  // ソート対応
     if (flist_add_finfo(flist, info) != 0) {
-      CHECK(finfo_destroy(&info));
+      finfo_destroy(&info);
       return false;
     }
-    CHECK(finfo_destroy(&info));
-    CHECK(sort_file_list_desc(flist));
+    finfo_destroy(&info);
+    sort_file_list_desc(flist);
   }
   flist->finfos[0]->fsize += len;
 
@@ -574,7 +549,7 @@ bool rotator_rotate(size_t len) {
  */
 bool rotator_fputs(const char* line) {
   if (!line) {
-    SET_ERR_MSG("書き込み文字列が設定されていません。\n");
+    SET_ERR_LOG_AUTO(ERR_INVALID_ARG);
     return false;
   }
 
